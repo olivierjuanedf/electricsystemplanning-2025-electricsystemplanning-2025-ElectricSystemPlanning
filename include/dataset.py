@@ -6,7 +6,7 @@ from typing import Dict, List, Tuple, Optional
 
 import numpy as np
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from common.constants.aggreg_operations import AggregOpeNames
 from common.constants.datatypes import DATATYPE_NAMES
@@ -14,15 +14,16 @@ from common.constants.eraa_data import ERAAParamNames
 from common.constants.prod_types import ProdTypeNames
 from common.error_msgs import print_errors_list
 from common.long_term_uc_io import COLUMN_NAMES, DT_FILE_PREFIX, DT_SUBFOLDERS, FILES_FORMAT, \
-    GEN_CAPA_SUBDT_COLS, INPUT_CY_STRESS_TEST_SUBFOLDER, INPUT_ERAA_FOLDER
+    GEN_CAPA_SUBDT_COLS, INPUT_CY_STRESS_TEST_SUBFOLDER, INPUT_ERAA_FOLDER, HYDRO_KEY_COLUMNS, \
+    HYDRO_VALUE_COLUMNS, HYDRO_TS_GRANULARITY, HYDRO_DATA_RESAMPLE_METHODS, HYDRO_LEVELS_RESAMPLE_FILLNA_VALS
 from common.uc_run_params import UCRunParams
 from include.dataset_builder import GenerationUnitData, GEN_UNITS_PYPSA_PARAMS, set_gen_unit_name
 from utils.basic_utils import get_intersection_of_lists
 from utils.df_utils import create_dict_from_cols_in_df, selec_in_df_based_on_list, set_aggreg_col_based_on_corresp, \
-    create_dict_from_df_row
+    create_dict_from_df_row, resample_and_distribute
 from utils.dir_utils import uniformize_path_os
 from utils.eraa_data_reader import filter_input_data, gen_capa_pt_str_sanitizer, select_interco_capas, \
-    set_aggreg_cf_prod_types_data
+    set_aggreg_cf_prod_types_data, read_and_process_hydro_data
 from utils.write import json_dump
 
 N_SPACES_MSG = 2
@@ -131,19 +132,109 @@ def get_installed_gen_capas_data(folder: str, file_suffix: str, country: str, ag
     if not os.path.exists(gen_capa_data_file):
         logging.warning(f'Generation capas data file does not exist: {country} not accounted for here')
         return None
-    else:
-        df_gen_capa = pd.read_csv(gen_capa_data_file, sep=FILES_FORMAT.column_sep, decimal=FILES_FORMAT.decimal_sep)
-        # Keep sanitize prod. types col values
-        df_gen_capa[prod_type_col] = df_gen_capa[prod_type_col].apply(gen_capa_pt_str_sanitizer)
-        # Keep only selected aggreg. prod. types
-        df_gen_capa = (
-            set_aggreg_col_based_on_corresp(df=df_gen_capa, col_name=prod_type_col,
-                                            created_agg_col_name=PROD_TYPE_AGG_COL, val_cols=GEN_CAPA_SUBDT_COLS,
-                                            agg_corresp=aggreg_pt_gen_capa_def, common_aggreg_ope=AggregOpeNames.sum)
-        )
-        df_gen_capa = \
-            selec_in_df_based_on_list(df=df_gen_capa, selec_col=PROD_TYPE_AGG_COL, selec_vals=selected_agg_prod_types)
-        return df_gen_capa
+
+    df_gen_capa = pd.read_csv(gen_capa_data_file, sep=FILES_FORMAT.column_sep, decimal=FILES_FORMAT.decimal_sep)
+    # Keep sanitize prod. types col values
+    df_gen_capa[prod_type_col] = df_gen_capa[prod_type_col].apply(gen_capa_pt_str_sanitizer)
+    # Keep only selected aggreg. prod. types
+    df_gen_capa = (
+        set_aggreg_col_based_on_corresp(df=df_gen_capa, col_name=prod_type_col,
+                                        created_agg_col_name=PROD_TYPE_AGG_COL, val_cols=GEN_CAPA_SUBDT_COLS,
+                                        agg_corresp=aggreg_pt_gen_capa_def, common_aggreg_ope=AggregOpeNames.sum)
+    )
+    df_gen_capa = \
+        selec_in_df_based_on_list(df=df_gen_capa, selec_col=PROD_TYPE_AGG_COL, selec_vals=selected_agg_prod_types)
+    return df_gen_capa
+
+
+def set_final_hydro_key_cols(hydro_dt: str) -> List[str]:
+    key_cols = HYDRO_KEY_COLUMNS[hydro_dt]
+    # week and day idx columns have been removed when reading and processing
+    for col in [COLUMN_NAMES.day, COLUMN_NAMES.week]:
+        if col in key_cols:
+            key_cols.remove(col)
+    # not to be saved in df of a given country (with all fields of same value)
+    zone_col = COLUMN_NAMES.zone
+    key_cols.remove(zone_col)
+    # if data wo climatic year, but added to have uniform format hereafter
+    if COLUMN_NAMES.climatic_year not in key_cols:
+        key_cols.append(COLUMN_NAMES.climatic_year)
+    return key_cols
+
+
+def get_hydro_data(hydro_dt: str, folder: str, countries: List[str], climatic_year: int,
+                   period: Tuple[datetime, datetime]) -> Optional[Dict[str, pd.DataFrame]]:
+    """
+    Get hydro. data - with generic function for the different (sub) datatypes: ror prod., inflows, extreme levels
+    Args:
+        hydro_dt: hydro datatype considered
+        folder: in which data is to be read
+        countries: to be considered
+        climatic_year: idem
+        period: idem
+
+    Returns: {country: associated df with date and climatic year - with unique value - as 'key' columns}
+    """
+    logging.debug(f'Get {hydro_dt} data (1 file over all countries and years)')
+    df_hydro_data = read_and_process_hydro_data(hydro_dt=hydro_dt, folder=folder)
+    date_col = COLUMN_NAMES.date
+    period_end = period[1]
+    df_hydro_data = filter_input_data(df=df_hydro_data, date_col=date_col, climatic_year_col=COLUMN_NAMES.climatic_year,
+                                      period_start=period[0], period_end=period_end, climatic_year=climatic_year)
+    # resample and distribute to hourly values
+    # end date to resample -> to include the 23h of last date in data (under convention that period end is EXCLUDED)
+    end_date_resample = period_end - timedelta(hours=1)
+    value_cols = HYDRO_VALUE_COLUMNS[hydro_dt]
+    key_cols = set_final_hydro_key_cols(hydro_dt=hydro_dt)
+    per_country_hydro_data = {}
+    for country in countries:
+        # either day to hours or week to hours
+        resample_divisor = 24 if HYDRO_TS_GRANULARITY[hydro_dt] == 'day' else 7 * 24
+        fill_na_vals = HYDRO_LEVELS_RESAMPLE_FILLNA_VALS  # only used for extreme-levels of reservoir -> no limit
+        current_country_df = (
+            selec_in_df_based_on_list(df=df_hydro_data, selec_col=COLUMN_NAMES.zone, selec_vals=[country],
+                                      rm_selec_col=True))
+        if len(current_country_df) > 0:
+            resample_method = HYDRO_DATA_RESAMPLE_METHODS[hydro_dt]
+            per_country_hydro_data[country] = (
+                resample_and_distribute(df=current_country_df, date_col=date_col, value_cols=value_cols,
+                                        key_cols=key_cols, method=resample_method, end_date=end_date_resample,
+                                        resample_divisor=resample_divisor, fill_na_vals=fill_na_vals, freq='h')
+            )
+        else:  # no data for current country
+            logging.warning(f'No {hydro_dt} data obtained for country {country}')
+            per_country_hydro_data[country] = pd.DataFrame()
+    return per_country_hydro_data
+
+
+def separate_hydro_extr_levels_data(hydro_extr_levels_data: Dict[str, pd.DataFrame]) \
+        -> Tuple[Dict[str, pd.DataFrame], Dict[str, pd.DataFrame]]:
+    """
+    From {country: df containing both min and max levels data} to two separate dictionaries
+    Args:
+        hydro_extr_levels_data:
+
+    Returns: {country: df with min level data}, {country: df with max level data}
+    """
+    climatic_year_col = COLUMN_NAMES.climatic_year
+    hydro_min_level_data = {}
+    hydro_max_level_data = {}
+    cols_min_level = [COLUMN_NAMES.date, climatic_year_col, COLUMN_NAMES.min_value]
+    cols_max_level = [COLUMN_NAMES.date, climatic_year_col, COLUMN_NAMES.max_value]
+    for country, df in hydro_extr_levels_data.items():
+        if len(df) == 0:  # no data obtained
+            hydro_min_level_data[country] = df
+            hydro_max_level_data[country] = df
+        else:
+            df_min_level = df[cols_min_level]
+            df_max_level = df[cols_max_level]
+            # TODO: avoid cast to float beforehand of climatic year (because of appli
+            #  of ffill method in resample_and_distribute?)
+            df_min_level[climatic_year_col] = df_min_level[climatic_year_col].astype(int)
+            df_max_level[climatic_year_col] = df_max_level[climatic_year_col].astype(int)
+            hydro_min_level_data[country] = df_min_level
+            hydro_max_level_data[country] = df_max_level
+    return hydro_min_level_data, hydro_max_level_data
 
 
 def overwrite_gen_capas_data(df_gen_capa: pd.DataFrame, new_power_capas: Dict[str, Dict[str, float]],
@@ -291,11 +382,15 @@ class Dataset:
     agg_prod_types_with_cf_data: List[str]
     source: str = 'eraa_2023.2'
     is_stress_test: bool = False
-    demand: Dict[str, pd.DataFrame] = None
-    net_demand: Dict[str, pd.DataFrame] = None
-    agg_cf_data: Dict[str, pd.DataFrame] = None
-    agg_gen_capa_data: Dict[str, pd.DataFrame] = None
-    interco_capas: Dict[Tuple[str, str], float] = None
+    demand: Dict[str, pd.DataFrame] = None  # {country: df of data}
+    net_demand: Dict[str, pd.DataFrame] = None  # idem
+    agg_cf_data: Dict[str, pd.DataFrame] = None  # idem
+    agg_gen_capa_data: Dict[str, pd.DataFrame] = None  # idem
+    interco_capas: Dict[Tuple[str, str], float] = None  # {(origin country, dest. country): interco. capa. value}
+    hydro_ror_data: Dict[str, pd.DataFrame] = None  # Run-of-River prod data # TODO: typing
+    hydro_inflows_data: Dict[str, pd.DataFrame] = None  # TODO: typing
+    hydro_reservoir_levels_min_data: Dict[str, pd.DataFrame] = None  # TODO: typing
+    hydro_reservoir_levels_max_data: Dict[str, pd.DataFrame] = None  # TODO: typing
     # {country: list of associated generation units data}
     generation_units_data: Dict[str, List[GenerationUnitData]] = None
 
@@ -326,18 +421,54 @@ class Dataset:
         res_cf_folder = os.path.join(INPUT_ERAA_FOLDER, DT_SUBFOLDERS.res_capa_factors)
         gen_capas_folder = os.path.join(INPUT_ERAA_FOLDER, DT_SUBFOLDERS.generation_capas)
         interco_capas_folder = os.path.join(INPUT_ERAA_FOLDER, DT_SUBFOLDERS.interco_capas)
+        hydro_folder = os.path.join(INPUT_ERAA_FOLDER, DT_SUBFOLDERS.hydro)
 
         self.demand = {}
         self.net_demand = {}
         self.agg_cf_data = {}
         self.agg_gen_capa_data = {}
+        self.hydro_ror_data = {}
+        self.hydro_inflows_data = {}
+        self.hydro_reservoir_levels_min_data = {}
+        self.hydro_reservoir_levels_max_data = {}
 
         dts_tb_read = deepcopy(datatypes_selec)
         # datatypes to be added to list of read ones, to be able to obtain net demand
         if DATATYPE_NAMES.net_demand in datatypes_selec:
-            dts_tb_read.extend([DATATYPE_NAMES.demand, DATATYPE_NAMES.installed_capa, DATATYPE_NAMES.capa_factor])
+            dts_tb_read.extend([DATATYPE_NAMES.demand, DATATYPE_NAMES.installed_capa, DATATYPE_NAMES.capa_factor,
+                                DATATYPE_NAMES.hydro_ror])
             dts_tb_read = list(set(dts_tb_read))
 
+        # hydro. data is concatenated over all countries in hydro data -> read it once
+        # TODO: merge/loop (how to for assignment depending on hydro datatype?)
+        if DATATYPE_NAMES.hydro_ror in dts_tb_read:
+            if subdt_selec is None or DATATYPE_NAMES.hydro_ror in subdt_selec:
+                self.hydro_ror_data \
+                    = get_hydro_data(hydro_dt=DATATYPE_NAMES.hydro_ror, folder=hydro_folder,
+                                     countries=uc_run_params.selected_countries,
+                                     climatic_year=uc_run_params.selected_climatic_year,
+                                     period=(uc_run_params.uc_period_start, uc_run_params.uc_period_end)
+                                     )
+        if DATATYPE_NAMES.hydro_inflows in dts_tb_read:
+            self.hydro_inflows_data = (
+                get_hydro_data(hydro_dt=DATATYPE_NAMES.hydro_inflows, folder=hydro_folder,
+                               countries=uc_run_params.selected_countries,
+                               climatic_year=uc_run_params.selected_climatic_year,
+                               period=(uc_run_params.uc_period_start, uc_run_params.uc_period_end))
+            )
+        # both extr levels data in same file -> get data once
+        if DATATYPE_NAMES.hydro_levels_min in dts_tb_read or DATATYPE_NAMES.hydro_levels_max in dts_tb_read:
+            hydro_extr_levels_data = (
+                get_hydro_data(hydro_dt=DATATYPE_NAMES.hydro_levels_min, folder=hydro_folder,
+                               countries=uc_run_params.selected_countries,
+                               climatic_year=uc_run_params.selected_climatic_year,
+                               period=(uc_run_params.uc_period_start, uc_run_params.uc_period_end))
+            )
+            # from {country: df containing both min and max levels data} to two separate dictionaries
+            self.hydro_reservoir_levels_min_data, self.hydro_reservoir_levels_max_data = (
+                separate_hydro_extr_levels_data(hydro_extr_levels_data=hydro_extr_levels_data)
+            )
+        # loop over countries for per country data files
         for country in uc_run_params.selected_countries:
             logging.info(3 * '#' + f' For country: {country}')
             logging.info(f'With selected aggreg. prod. types: {uc_run_params.selected_prod_types[country]}')
@@ -411,10 +542,15 @@ class Dataset:
                 capa_info_log(df_gen_capa=current_df_gen_capa)
 
             if DATATYPE_NAMES.net_demand in datatypes_selec:
+                # ror production of current country
+                if country in self.hydro_ror_data:
+                    current_ror_prod = self.hydro_ror_data[country]
+                else:
+                    current_ror_prod = None
                 current_df_net_demand, pts_with_capa_from_arg = (
                     calc_net_demand(df_demand=current_df_demand, df_gen_capa=current_df_gen_capa,
                                     df_agg_cf=agg_cf_data_read, cf_agg_prod_types_tb_read=cf_agg_prod_types_tb_read,
-                                    capas_aggreg_pt_with_cf=capas_aggreg_pt_with_cf)
+                                    capas_aggreg_pt_with_cf=capas_aggreg_pt_with_cf, df_hydro_ror_prod=current_ror_prod)
                 )
                 self.net_demand[country] = current_df_net_demand
                 capa_from_arg_for_net_demand_info_log(prod_types_with_capa_from_arg=pts_with_capa_from_arg,
@@ -431,11 +567,17 @@ class Dataset:
             self.interco_capas = interco_capas
 
     def complete_data(self):
-        # TODO: see cases leading to None data at this stage... and if to be treated before
+        # TODO: see cases leading to None data at this stage... and if to be treated before - and merge following cases
         self.demand = complete_country_data(per_country_data=self.demand)
         self.net_demand = complete_country_data(per_country_data=self.net_demand)
         self.agg_cf_data = complete_country_data(per_country_data=self.agg_cf_data)
         self.agg_gen_capa_data = complete_country_data(per_country_data=self.agg_gen_capa_data)
+        self.hydro_ror_data = complete_country_data(per_country_data=self.hydro_ror_data)
+        self.hydro_inflows_data = complete_country_data(per_country_data=self.hydro_inflows_data)
+        self.hydro_reservoir_levels_min_data = complete_country_data(
+            per_country_data=self.hydro_reservoir_levels_min_data)
+        self.hydro_reservoir_levels_max_data = complete_country_data(
+            per_country_data=self.hydro_reservoir_levels_max_data)
 
     def get_agg_prod_types(self, country: str) -> List[str]:
         return list(set(self.agg_gen_capa_data[country][PROD_TYPE_AGG_COL]))
@@ -455,6 +597,7 @@ class Dataset:
         # TODO: set as global constants/unify...
         power_capa_key = 'power_capa'
         capa_factor_key = 'capa_factors'
+        inflow_key = 'inflow'  # TODO: as a constant
         self.generation_units_data = {}
         for country in countries:
             logging.debug(f'- for country {country}')
@@ -500,6 +643,17 @@ class Dataset:
                         current_assets_data[agg_pt][GEN_UNITS_PYPSA_PARAMS.capa_factors] = (
                             np.array(current_pt_res_cf_data[COLUMN_NAMES.value])
                         )
+                    # add inflow when it applies
+                    if inflow_key in units_complem_params_per_agg_pt[agg_pt]:
+                        logging.debug(2 * N_SPACES_MSG * ' ' + f'-> add {capa_factor_key}')
+                        current_pt_inflow_data = self.hydro_inflows_data[country]
+                        # set column according to type of hydro asset
+                        inflow_value_col = 'cum_inflow_into_reservoirs' if agg_pt == ProdTypeNames.hydro_reservoir \
+                            else 'cum_nat_inflow_into_pump-storage_reservoirs'
+                        current_assets_data[agg_pt][GEN_UNITS_PYPSA_PARAMS.inflow] = (
+                            np.array(current_pt_inflow_data[inflow_value_col])
+                        )
+
                 # specific parameters for failure
                 elif agg_pt == ProdTypeNames.failure:
                     current_assets_data[agg_pt][GEN_UNITS_PYPSA_PARAMS.power_capa] = power_capacity
