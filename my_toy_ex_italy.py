@@ -131,6 +131,23 @@ wind_off_shore_cf_data = {
     country: selec_in_df_based_on_list(df=eraa_dataset.agg_cf_data[country], selec_col=prod_type_col,
                                        selec_vals=[ProdTypeNames.wind_offshore], rm_selec_col=True)
 }
+# N.B. Both reservoir and open-loop pump-storage inflow values are in the same df - a bit different operation 
+# compared to data getter for RES CF data
+hydro_reservoir_inflows_data = {
+    country: eraa_dataset.hydro_inflows_data[country][['date', 'cum_inflow_into_reservoirs']]}
+open_loop_pump_sto_inflows_data = {
+    country: eraa_dataset.hydro_inflows_data[country][['date', 'cum_nat_inflow_into_pump-storage_reservoirs']]}
+# rename columns to get 'value' column name for all data after this stage
+from utils.df_utils import rename_df_columns
+value_col = 'value'
+hydro_reservoir_inflows_data = {c: rename_df_columns(df=df,
+                                                     old_to_new_cols={'cum_inflow_into_reservoirs':
+                                                                      value_col})
+                                                                      for c, df in hydro_reservoir_inflows_data.items()}
+open_loop_pump_sto_inflows_data = {c: rename_df_columns(df=df,
+                                                        old_to_new_cols={'cum_nat_inflow_into_pump-storage_reservoirs': 
+                                                                         value_col}) 
+                                                                         for c, df in open_loop_pump_sto_inflows_data.items()}
 
 """
   IV) Build PyPSA model - with unique country (Italy here)
