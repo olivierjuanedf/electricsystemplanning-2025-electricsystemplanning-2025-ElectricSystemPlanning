@@ -36,6 +36,7 @@ def get_generators(country_trigram: str, fuel_sources: Dict[str, FuelSource], wi
     """
     # get number of time-slots based on length of CF data
     n_ts = len(wind_on_shore_cf_data['value'].values)
+    inflows_sensitivity_coeff = 0.5
     generators = [
         {
             GEN_UNITS_PYPSA_PARAMS.name: f'{country_trigram}_hard-coal',
@@ -117,7 +118,8 @@ def get_generators(country_trigram: str, fuel_sources: Dict[str, FuelSource], wi
          GEN_UNITS_PYPSA_PARAMS.nominal_power: 10000,
          GEN_UNITS_PYPSA_PARAMS.max_hours: 1000,
          GEN_UNITS_PYPSA_PARAMS.soc_init: 1000000,
-         GEN_UNITS_PYPSA_PARAMS.inflow: hydro_reservoir_inflows_data['value'].values
+         GEN_UNITS_PYPSA_PARAMS.inflow: 
+         inflows_sensitivity_coeff * hydro_reservoir_inflows_data['value'].values
         },        
         # QUESTION: what is this - very necessary - last fictive asset?
         {
