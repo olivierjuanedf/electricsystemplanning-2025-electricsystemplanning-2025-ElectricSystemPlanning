@@ -547,6 +547,8 @@ class PypsaModel:
         df_prod_opt = self.prod_var_opt
         if rename_snapshot_col:
             df_prod_opt.index.name = OUTPUT_DATE_COL
+        # cast to int to avoid useless numeric precisions and associated... issues!
+        df_prod_opt = df_prod_opt.astype(int)
         df_prod_opt.to_csv(opt_p_csv_file)
         # then storage assets decisions
         storage_opt_dec_csv_file = \
@@ -564,6 +566,8 @@ class PypsaModel:
         df_storage_all_decs = df_prod_opt.join(df_cons_opt).join(df_soc_opt)
         if rename_snapshot_col:
             df_storage_all_decs.index.name = OUTPUT_DATE_COL
+        # cast to int to avoid useless numeric precisions and associated... issues!
+        df_storage_all_decs = df_storage_all_decs.astype(int)
         df_storage_all_decs.to_csv(storage_opt_dec_csv_file)
         # and finally link flow decisions
         link_flow_opt_dec_csv_file = \
@@ -581,6 +585,8 @@ class PypsaModel:
         df_link_flow_opt = pd.concat([df_link_flow_opt_direct, df_link_flow_opt_reverse], axis=1) 
         if rename_snapshot_col:
             df_link_flow_opt.index.name = OUTPUT_DATE_COL
+        # cast to int to avoid useless numeric precisions and associated... issues!
+        df_link_flow_opt = df_link_flow_opt.astype(int)        
         df_link_flow_opt.to_csv(link_flow_opt_dec_csv_file)
 
     def save_marginal_prices_to_csv(self, year: int, climatic_year: int, start_horizon: datetime,
@@ -594,6 +600,8 @@ class PypsaModel:
         df_sde_dual_var_opt = self.sde_dual_var_opt
         if rename_snapshot_col:
             df_sde_dual_var_opt.index.name = OUTPUT_DATE_COL
+        # do NOT cast this df, given that price values can be accurate at some decimals 
+        # -> may be useful to observe the correspondence with (input) marginal cost values
         df_sde_dual_var_opt.to_csv(marginal_prices_csv_file)
 
 
