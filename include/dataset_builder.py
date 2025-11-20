@@ -373,7 +373,7 @@ class PypsaModel:
         self.prod_var_opt = self.network.generators_t.p
 
     def get_storage_vars_opt(self):
-        self.storage_prod_var_opt = self.network.storage_units_t.p
+        self.storage_prod_var_opt = self.network.storage_units_t.p_dispatch
         self.storage_cons_var_opt = self.network.storage_units_t.p_store
         self.storage_soc_opt = self.network.storage_units_t.state_of_charge
 
@@ -506,7 +506,7 @@ class PypsaModel:
     def plot_geo_synthesis_of_flows_at_opt(self):
         # TODO: cf. other proposition from Copilot for geographic representation
         bob = 1
-        
+
     def plot_failure_at_opt(self, country: str, year: int, climatic_year: int, start_horizon: datetime,
                             toy_model_output: bool = False):
         # catch DeprecationWarnings TODO: fix/more robust way to catch them?
