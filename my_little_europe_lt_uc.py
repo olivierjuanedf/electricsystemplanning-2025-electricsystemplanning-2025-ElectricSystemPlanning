@@ -1,6 +1,6 @@
 import logging
 import os.path
-from typing import Dict, Tuple, List
+from typing import Dict, Tuple, List, Optional
 
 import pandas as pd
 import time
@@ -16,6 +16,7 @@ from common.long_term_uc_io import set_full_lt_uc_output_folder
 from common.uc_run_params import UCRunParams
 from include.dataset import Dataset
 from include.dataset_builder import PypsaModel
+from include.uc_summary_metrics import UCSummaryMetrics
 from include_runner.overwrite_uc_run_params import apply_fixed_uc_run_params
 from utils.basic_utils import print_non_default
 from utils.dates import get_period_str
@@ -123,7 +124,7 @@ def solve_pypsa_network_model(pypsa_model: PypsaModel, year: int, n_countries: i
     return result
 
 
-def save_data_and_fig_results(pypsa_model: PypsaModel, uc_run_params: UCRunParams, result_optim_status: str):
+def save_data_and_fig_results(pypsa_model: PypsaModel, uc_run_params: UCRunParams, result_optim_status: str) -> Optional[UCSummaryMetrics]:
     pypsa_opt_resol_status = OPTIM_RESOL_STATUS.optimal
     # if optimal resolution status, save output data and plot associated figures
     if result_optim_status == pypsa_opt_resol_status:
@@ -162,9 +163,13 @@ def save_data_and_fig_results(pypsa_model: PypsaModel, uc_run_params: UCRunParam
         pypsa_model.save_marginal_prices_to_csv(year=uc_run_params.selected_target_year,
                                                 climatic_year=uc_run_params.selected_climatic_year,
                                                 start_horizon=uc_run_params.uc_period_start)
+        # set UC summary metrics (Energy Not Served, number of failure hours, costs)
+        pypsa_model.set_uc_summary_metrics(total_cost=objective_value, failure_penalty=uc_run_params.failure_penalty)
+        return pypsa_model.uc_summary_metrics
     else:
         logging.info(f'Optimisation resolution status is not {pypsa_opt_resol_status} '
-                     f'-> output data (resp. figures) cannot be saved (resp. plotted)')
+                     f'-> output data (resp. figures) cannot be saved (resp. plotted), and None UCSummaryMetrics returned')
+        return None
 
 
 def run(network_name: str = 'my little europe', solver_params: SolverParams = None,

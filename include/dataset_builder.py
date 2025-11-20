@@ -20,6 +20,7 @@ from common.long_term_uc_io import (get_marginal_prices_file, get_network_figure
                                     get_storage_opt_dec_file, get_link_flow_opt_dec_file, get_figure_file_named, 
                                     FigNamesPrefix, get_output_figure)
 from common.plot_params import PlotParams
+from include.uc_summary_metrics import UCSummaryMetrics
 from utils.basic_utils import lexico_compar_str, rm_elts_with_none_val, rm_elts_in_str, sort_lexicographically
 from utils.df_utils import rename_df_columns
 from utils.dir_utils import make_dir
@@ -155,6 +156,7 @@ class PypsaModel:
     storage_soc_opt: pd.DataFrame = None  # idem for Storage prod -> SoC (State-of-Charge)
     link_flow_var_opt_direct: pd.DataFrame = None  # flow in the links at optimum, direct direction
     link_flow_var_opt_reverse: pd.DataFrame = None  # reverse direction
+    uc_summary_metrics: UCSummaryMetrics = None  # UC summary metrics (ENS, nber of failure hours, costs...)
     optim_solver_params: SolverParams = None
     DEFAULT_CARRIER = 'ac'
 
@@ -390,6 +392,23 @@ class PypsaModel:
             f'Optimisation resolution status is {pypsa_resol_status} with objective value (cost) = '
             f'{objective_value:.2f} -> output data (resp. figures) can be generated')
         return objective_value
+
+    def set_uc_summary_metrics(self, total_cost: float, failure_penalty: float = None):
+        failure_prod_cols = [col for col in self.prod_var_opt.columns if col.endswith('_failure')]
+        df_failure_opt = self.prod_var_opt[failure_prod_cols]
+        per_country_ens = {key: float(val) for key, val in dict(df_failure_opt.sum()).items()}
+        per_country_n_failure_h = {key: int(val) for key, val in dict((df_failure_opt > 0).sum(axis=0)).items()}
+        # remove '_failure' suffix from two previous dict. keys
+        per_country_ens = {key.split('_')[0]: val for key, val in per_country_ens.items()}
+        per_country_n_failure_h = {key.split('_')[0]: val for key, val in per_country_n_failure_h.items()} 
+        if failure_penalty is not None:
+            eur_failure_volume = sum(per_country_ens.values())
+            eur_total_ope_cost = total_cost - failure_penalty * eur_failure_volume
+        else:
+            eur_total_ope_cost = None
+        self.uc_summary_metrics = UCSummaryMetrics(per_country_ens=per_country_ens, 
+                                                   per_country_n_failure_hours=per_country_n_failure_h,
+                                                   total_cost=total_cost, total_operational_cost=eur_total_ope_cost)
 
     def plot_installed_capas(self, country: str, year: int, toy_model_output: bool = False):
         country_trigram = set_country_trigram(country=country)
