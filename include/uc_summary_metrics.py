@@ -46,11 +46,11 @@ class UCSummaryMetrics:
         uc_summary_metrics_str += f'{metric_sep}Total operational cost (Europe, without failure penalty incl., {self.COST_UNIT}): {format_with_spaces(number=self.total_operational_cost)}'
         uc_summary_metrics_str += f'{metric_sep}Total CO2 emissions (over Europe, {self.CO2_EMIS_UNIT}): {format_with_spaces(number=self.total_co2_emissions)}'
         if self.per_country_total_cost is not None:
-            uc_summary_metrics_str += f'{metric_sep}Total cost ({self.COST_UNIT}): {dict_to_str(d=self.per_country_total_cost, nbers_with_spaces=True)}'
+            uc_summary_metrics_str += f'{metric_sep}PER COUNTRY total cost ({self.COST_UNIT}): {dict_to_str(d=self.per_country_total_cost, nbers_with_spaces=True)}'
         if self.per_country_total_operational_cost is not None:
-            uc_summary_metrics_str += f'{metric_sep}Total operational cost (without failure penalty incl., {self.COST_UNIT}): {dict_to_str(d=self.per_country_total_operational_cost, nbers_with_spaces=True)}'
+            uc_summary_metrics_str += f'{metric_sep}PER COUNTRY total operational cost (without failure penalty incl., {self.COST_UNIT}): {dict_to_str(d=self.per_country_total_operational_cost, nbers_with_spaces=True)}'
         if self.per_country_co2_emissions is not None:
-            uc_summary_metrics_str += f'{metric_sep}Total CO2 emissions ({self.CO2_EMIS_UNIT}): {dict_to_str(d=self.per_country_co2_emissions, nbers_with_spaces=True)}'
+            uc_summary_metrics_str += f'{metric_sep}PER COUNTRY total CO2 emissions ({self.CO2_EMIS_UNIT}): {dict_to_str(d=self.per_country_co2_emissions, nbers_with_spaces=True)}'
         return uc_summary_metrics_str
     
     def json_dump(self, file: str):

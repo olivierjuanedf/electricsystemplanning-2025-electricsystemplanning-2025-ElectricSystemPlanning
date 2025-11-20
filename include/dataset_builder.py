@@ -396,13 +396,15 @@ class PypsaModel:
 
     def calc_co2_emissions(self, per_country: bool = False) -> Union[float, Dict[str, float]]:
         if per_country:
-            # TODO: adapt code below starting with a selection of per-country generators
-            raise Exception('Not coded for now...')
-            # countries = list(self.network.buses.index)
-            # for country in countries:
-            #     prod_unit_prefix = f'{country}_'
-            #     current_cols = [col for col in self.prod_var_opt.columns if col.startswith(prod_unit_prefix)]
-            #     current_prod_var_opt = self.prod_var_opt[current_cols]
+            # TODO: test code below starting with a selection of per-country generators
+            countries = list(self.network.buses.index)
+            per_country_co2_emissions = {}
+            for country in countries:
+                prod_unit_prefix = f'{country}_'
+                current_cols = [col for col in self.prod_var_opt.columns if col.startswith(prod_unit_prefix)]
+                current_prod_var_opt = self.prod_var_opt[current_cols]
+                per_country_co2_emissions[country] = float(current_prod_var_opt.multiply(self.network.snapshot_weightings.generators, axis=0).multiply(self.network.generators.carrier.map(self.network.carriers.co2_emissions), axis=1).sum().sum())
+            return per_country_co2_emissions
         return self.prod_var_opt.multiply(self.network.snapshot_weightings.generators, axis=0).multiply(self.network.generators.carrier.map(self.network.carriers.co2_emissions), axis=1).sum().sum()
 
     def set_uc_summary_metrics(self, total_cost: float, failure_penalty: float = None):
@@ -421,12 +423,14 @@ class PypsaModel:
             eur_total_ope_cost = None
         # co2 emissions
         total_co2_emissions = self.calc_co2_emissions()
+        per_country_co2_emissions = self.calc_co2_emissions(per_country=True)
         # attention convert to GWh/M€ and int to get smaller values for synthesis. TODO: check CO2 unit!
         self.uc_summary_metrics = UCSummaryMetrics(per_country_ens={c: int(val/1e3) for c, val in per_country_ens.items()}, 
                                                    per_country_n_failure_hours=per_country_n_failure_h,
                                                    total_cost=int(total_cost/1e6), 
                                                    total_operational_cost=int(eur_total_ope_cost/1e6),
-                                                   total_co2_emissions=int(total_co2_emissions/1e3))
+                                                   total_co2_emissions=int(total_co2_emissions/1e3),
+                                                   per_country_co2_emissions={c: int(val/1e3) for c, val in per_country_co2_emissions.items()})
 
     def json_dump_uc_summary_metrics(self, year: int, climatic_year: int, start_horizon: datetime, 
                                      country: str = 'europe', toy_model_output: bool = False):
