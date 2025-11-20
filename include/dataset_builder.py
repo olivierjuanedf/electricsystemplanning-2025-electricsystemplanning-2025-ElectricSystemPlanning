@@ -499,6 +499,14 @@ class PypsaModel:
         #                 )
         #     plt.close()
 
+    def plot_cum_export_flows_at_opt(self):
+        # TODO: aggreg. plot with sum of exported flow per country (as a function of time)
+        bob = 1
+
+    def plot_geo_synthesis_of_flows_at_opt(self):
+        # TODO: cf. other proposition from Copilot for geographic representation
+        bob = 1
+        
     def plot_failure_at_opt(self, country: str, year: int, climatic_year: int, start_horizon: datetime,
                             toy_model_output: bool = False):
         # catch DeprecationWarnings TODO: fix/more robust way to catch them?
