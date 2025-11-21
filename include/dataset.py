@@ -20,7 +20,7 @@ from common.uc_run_params import UCRunParams
 from include.dataset_builder import GenerationUnitData, GEN_UNITS_PYPSA_PARAMS, set_gen_unit_name
 from utils.basic_utils import get_intersection_of_lists
 from utils.df_utils import create_dict_from_cols_in_df, selec_in_df_based_on_list, set_aggreg_col_based_on_corresp, \
-    create_dict_from_df_row, resample_and_distribute
+    create_dict_from_df_row, resample_and_distribute, get_subdf_from_date_range
 from utils.dir_utils import uniformize_path_os
 from utils.eraa_data_reader import filter_input_data, gen_capa_pt_str_sanitizer, select_interco_capas, \
     set_aggreg_cf_prod_types_data, read_and_process_hydro_data
@@ -178,11 +178,15 @@ def get_hydro_data(hydro_dt: str, folder: str, countries: List[str], climatic_ye
     logging.debug(f'Get {hydro_dt} data (1 file over all countries and years)')
     df_hydro_data = read_and_process_hydro_data(hydro_dt=hydro_dt, folder=folder)
     date_col = COLUMN_NAMES.date
+    period_start = period[0]
     period_end = period[1]
     df_hydro_data = filter_input_data(df=df_hydro_data, date_col=date_col, climatic_year_col=COLUMN_NAMES.climatic_year,
-                                      period_start=period[0], period_end=period_end, climatic_year=climatic_year)
+                                      period_start=period_start, period_end=period_end, climatic_year=climatic_year)
     # resample and distribute to hourly values
     # end date to resample -> to include the 23h of last date in data (under convention that period end is EXCLUDED)
+    min_date_data = min(df_hydro_data[date_col])
+    # in case of weekly data if period_start is not a Monday it can be strictly before min date in data -> would lead to missing data
+    start_date_resample = min(period_start, min_date_data)
     end_date_resample = period_end - timedelta(hours=1)
     value_cols = HYDRO_VALUE_COLUMNS[hydro_dt]
     key_cols = set_final_hydro_key_cols(hydro_dt=hydro_dt)
@@ -198,8 +202,9 @@ def get_hydro_data(hydro_dt: str, folder: str, countries: List[str], climatic_ye
             resample_method = HYDRO_DATA_RESAMPLE_METHODS[hydro_dt]
             per_country_hydro_data[country] = (
                 resample_and_distribute(df=current_country_df, date_col=date_col, value_cols=value_cols,
-                                        key_cols=key_cols, method=resample_method, end_date=end_date_resample,
-                                        resample_divisor=resample_divisor, fill_na_vals=fill_na_vals, freq='h')
+                                        key_cols=key_cols, method=resample_method, start_date=start_date_resample, 
+                                        end_date=end_date_resample, resample_divisor=resample_divisor, 
+                                        fill_na_vals=fill_na_vals, freq='h')
             )
         else:  # no data for current country
             logging.warning(f'No {hydro_dt} data obtained for country {country}')
