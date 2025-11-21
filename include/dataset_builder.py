@@ -401,6 +401,7 @@ class PypsaModel:
         # TODO: fix it, going into linopy framework... apparently not possible to directly access this info from PyPSA
         # see linopy_model.constraints to get a list of considered constraints (Link-fix-p-lower, but cannot be accessed
         # with link_fix_p_lower)
+        # Issue self.network.model.dual.keys() empty...
         # loop over links... and build df
         # con_obj = linopy_model.link_fix_p_upper[link_name]
         # Retrieve the dual value (shadow price)
