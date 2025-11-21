@@ -372,6 +372,14 @@ class PypsaModel:
     def get_prod_var_opt(self):
         self.prod_var_opt = self.network.generators_t.p
 
+    def get_prod_var_opt_given_bus(self, bus_name: str) -> Optional[pd.DataFrame]:
+        if self.prod_var_opt is None:
+            logging.warning(f'Optimal variable prod. df cannot be obtained for bus {bus_name}; the prod_var_opt variable needs to be got first')
+            return None
+        prod_unit_prefix = f'{bus_name}_'
+        current_cols = [col for col in self.prod_var_opt.columns if col.startswith(prod_unit_prefix)]
+        return self.prod_var_opt[current_cols]
+
     def get_storage_vars_opt(self):
         self.storage_prod_var_opt = self.network.storage_units_t.p_dispatch
         self.storage_cons_var_opt = self.network.storage_units_t.p_store
@@ -397,12 +405,10 @@ class PypsaModel:
     def calc_co2_emissions(self, per_country: bool = False) -> Union[float, Dict[str, float]]:
         if per_country:
             # TODO: test code below starting with a selection of per-country generators
-            countries = list(self.network.buses.index)
+            countries = self.get_bus_names()
             per_country_co2_emissions = {}
             for country in countries:
-                prod_unit_prefix = f'{country}_'
-                current_cols = [col for col in self.prod_var_opt.columns if col.startswith(prod_unit_prefix)]
-                current_prod_var_opt = self.prod_var_opt[current_cols]
+                current_prod_var_opt = self.get_prod_var_opt_given_bus(bus_name=country)
                 per_country_co2_emissions[country] = float(current_prod_var_opt.multiply(self.network.snapshot_weightings.generators, axis=0).multiply(self.network.generators.carrier.map(self.network.carriers.co2_emissions), axis=1).sum().sum())
             return per_country_co2_emissions
         return self.prod_var_opt.multiply(self.network.snapshot_weightings.generators, axis=0).multiply(self.network.generators.carrier.map(self.network.carriers.co2_emissions), axis=1).sum().sum()
