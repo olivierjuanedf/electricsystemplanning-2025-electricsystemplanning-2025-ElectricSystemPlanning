@@ -9,13 +9,14 @@ from datetime import datetime
 from common.constants.datadims import DataDimensions
 from common.constants.extract_eraa_data import ERAADatasetDescr
 from common.constants.optimisation import OPTIM_RESOL_STATUS, DEFAULT_OPTIM_SOLVER_PARAMS, SolverParams
+from common.constants.prod_types import ProdTypeNames
 from common.constants.usage_params_json import EnvPhaseNames
 from common.fuel_sources import set_fuel_sources_from_json, DUMMY_FUEL_SOURCES, FuelSource
 from common.logger import init_logger, stop_logger, deactivate_verbose_warnings, TITLE_LOG_SEP
 from common.long_term_uc_io import set_full_lt_uc_output_folder
 from common.uc_run_params import UCRunParams
 from include.dataset import Dataset
-from include.dataset_builder import PypsaModel
+from include.dataset_builder import PypsaModel, select_gen_units_data, set_country_trigram
 from include.uc_summary_metrics import UCSummaryMetrics
 from include_runner.overwrite_uc_run_params import apply_fixed_uc_run_params
 from utils.basic_utils import print_non_default
@@ -94,8 +95,15 @@ def create_pypsa_network_model(name: str, uc_run_params: UCRunParams, eraa_datas
     pypsa_model.add_generators(generators_data=eraa_dataset.generation_units_data)
     pypsa_model.add_loads(demand=eraa_dataset.demand)
     pypsa_model.add_interco_links(countries=uc_run_params.selected_countries, interco_capas=eraa_dataset.interco_capas)
+    with_hydro_custom_const = False  # TODO: set to True/make it a parameter when adding SOC min/max level in model
+    if with_hydro_custom_const:
+        pypsa_model.build_model_before_adding_custom_const()
+        # get reservoir extreme generation and level values, as well as energy capacities (to see if constraints will be useless)
+        hydro_soc_min, hydro_soc_max, hydro_e_capa = eraa_dataset.get_hydro_params_for_extr_levels_const()
+        pypsa_model.add_hydro_extreme_levels_constraint(soc_min=hydro_soc_min, soc_max=hydro_soc_max,
+                                                        energy_capa=hydro_e_capa)
     logging.info(f'PyPSA network main properties: {pypsa_model.network}')
-    # plot network
+    # plot network  
     # name of current "phase" (of the course), the one associated to this script:
     # a multi-zone (Eur.) Unit Commitment model
     phase_name = EnvPhaseNames.multizones_uc_model

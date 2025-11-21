@@ -12,12 +12,13 @@ from common.constants.aggreg_operations import AggregOpeNames
 from common.constants.datatypes import DATATYPE_NAMES
 from common.constants.eraa_data import ERAAParamNames
 from common.constants.prod_types import ProdTypeNames
+from common.constants.pypsa_params import GEN_UNITS_PYPSA_PARAMS, GenUnitsCustomParams
 from common.error_msgs import print_errors_list
 from common.long_term_uc_io import COLUMN_NAMES, DT_FILE_PREFIX, DT_SUBFOLDERS, FILES_FORMAT, \
     GEN_CAPA_SUBDT_COLS, INPUT_CY_STRESS_TEST_SUBFOLDER, INPUT_ERAA_FOLDER, HYDRO_KEY_COLUMNS, \
     HYDRO_VALUE_COLUMNS, HYDRO_TS_GRANULARITY, HYDRO_DATA_RESAMPLE_METHODS, HYDRO_LEVELS_RESAMPLE_FILLNA_VALS
 from common.uc_run_params import UCRunParams
-from include.dataset_builder import GenerationUnitData, GEN_UNITS_PYPSA_PARAMS, set_gen_unit_name
+from include.dataset_builder import GenerationUnitData, set_gen_unit_name, select_gen_units_data, set_country_trigram
 from utils.basic_utils import get_intersection_of_lists
 from utils.df_utils import create_dict_from_cols_in_df, selec_in_df_based_on_list, set_aggreg_col_based_on_corresp, \
     create_dict_from_df_row, resample_and_distribute, get_subdf_from_date_range
@@ -212,7 +213,8 @@ def get_hydro_data(hydro_dt: str, folder: str, countries: List[str], climatic_ye
     return per_country_hydro_data
 
 
-def separate_hydro_extr_levels_data(hydro_extr_levels_data: Dict[str, pd.DataFrame]) \
+def separate_hydro_extr_levels_data(hydro_extr_levels_data: Dict[str, pd.DataFrame],
+                                    rename_value_col: bool = True) \
         -> Tuple[Dict[str, pd.DataFrame], Dict[str, pd.DataFrame]]:
     """
     From {country: df containing both min and max levels data} to two separate dictionaries
@@ -237,6 +239,9 @@ def separate_hydro_extr_levels_data(hydro_extr_levels_data: Dict[str, pd.DataFra
             #  of ffill method in resample_and_distribute?)
             df_min_level[climatic_year_col] = df_min_level[climatic_year_col].astype(int)
             df_max_level[climatic_year_col] = df_max_level[climatic_year_col].astype(int)
+            if rename_value_col:
+                df_min_level.rename(columns={COLUMN_NAMES.min_value: COLUMN_NAMES.value}, inplace=True)
+                df_max_level.rename(columns={COLUMN_NAMES.max_value: COLUMN_NAMES.value}, inplace=True)
             hydro_min_level_data[country] = df_min_level
             hydro_max_level_data[country] = df_max_level
     return hydro_min_level_data, hydro_max_level_data
@@ -380,6 +385,14 @@ def get_data_for_gen_unit_with_e_capa(capa_data_dict: Dict[str, float]) -> Dict[
 def complete_country_data(per_country_data: Dict[str, pd.DataFrame]) -> Dict[str, pd.DataFrame]:
     empty_df = pd.DataFrame()
     return {country: empty_df if val is None else val for country, val in per_country_data.items()}
+
+
+def check_if_from_eraa_data(param_key: str, complem_params_pt: Dict[str, str]) -> bool:
+    """
+    :param param_key: key used for parameter in ele-europe_params_fixed.json
+    :param complem_params_pt: dict {param key: where to extract from} for current prod. type
+    """
+    return param_key in complem_params_pt and complem_params_pt[param_key] == 'from_eraa_data'
 
 
 @dataclass
@@ -603,6 +616,7 @@ class Dataset:
         power_capa_key = 'power_capa'
         capa_factor_key = 'capa_factors'
         inflow_key = 'inflow'  # TODO: as a constant
+        soc_level_extr_key = 'soc_level_extr'
         self.generation_units_data = {}
         for country in countries:
             logging.debug(f'- for country {country}')
@@ -636,12 +650,14 @@ class Dataset:
                 is_storage_like = energy_capacity > 0
                 if agg_pt in units_complem_params_per_agg_pt and len(units_complem_params_per_agg_pt[agg_pt]) > 0:
                     # add pnom attribute if needed
-                    if power_capa_key in units_complem_params_per_agg_pt[agg_pt]:
+                    if check_if_from_eraa_data(param_key=power_capa_key, 
+                                               complem_params_pt=units_complem_params_per_agg_pt[agg_pt]):
                         logging.debug(2 * N_SPACES_MSG * ' ' + f'-> add {power_capa_key}')
                         current_assets_data[agg_pt][GEN_UNITS_PYPSA_PARAMS.power_capa] = int(power_capacity)
 
                     # add pmax_pu when variable for RES/fatal units
-                    if capa_factor_key in units_complem_params_per_agg_pt[agg_pt]:
+                    if check_if_from_eraa_data(param_key=capa_factor_key, 
+                                               complem_params_pt=units_complem_params_per_agg_pt[agg_pt]):
                         logging.debug(2 * N_SPACES_MSG * ' ' + f'-> add {capa_factor_key}')
                         current_pt_res_cf_data = (
                             self.agg_cf_data)[country][self.agg_cf_data[country][PROD_TYPE_AGG_COL] == agg_pt]
@@ -649,8 +665,9 @@ class Dataset:
                             np.array(current_pt_res_cf_data[COLUMN_NAMES.value])
                         )
                     # add inflow when it applies
-                    if inflow_key in units_complem_params_per_agg_pt[agg_pt]:
-                        logging.debug(2 * N_SPACES_MSG * ' ' + f'-> add {capa_factor_key}')
+                    if check_if_from_eraa_data(param_key=inflow_key, 
+                                               complem_params_pt=units_complem_params_per_agg_pt[agg_pt]):
+                        logging.debug(2 * N_SPACES_MSG * ' ' + f'-> add {inflow_key}')
                         current_pt_inflow_data = self.hydro_inflows_data[country]
                         # set column according to type of hydro asset
                         inflow_value_col = 'cum_inflow_into_reservoirs' if agg_pt == ProdTypeNames.hydro_reservoir \
@@ -661,6 +678,24 @@ class Dataset:
                             logging.warning(f'Issue to access inflows data for {country} and {agg_pt} -> set to 0')
                             current_inflows_data = 0  # Q: ok to set constant float and not a vector for this PyPSA attr.?
                         current_assets_data[agg_pt][GEN_UNITS_PYPSA_PARAMS.inflow] = current_inflows_data
+                    # add soc extreme levels when it applies
+                    if check_if_from_eraa_data(param_key=soc_level_extr_key, 
+                                               complem_params_pt=units_complem_params_per_agg_pt[agg_pt]):
+                        logging.debug(2 * N_SPACES_MSG * ' ' + f'-> add {soc_level_extr_key} (min and max)')
+                        current_pt_soc_level_min_data = self.hydro_reservoir_levels_min_data[country]
+                        try:
+                            current_soc_level_min_data = np.array(current_pt_soc_level_min_data[COLUMN_NAMES.value])
+                        except:
+                            logging.warning(f'Issue to access SOC level min data for {country} and {agg_pt} -> set to 0')
+                            current_soc_level_min_data = 0  # Q: ok to set constant float and not a vector for this PyPSA attr.?
+                        current_pt_soc_level_max_data = self.hydro_reservoir_levels_max_data[country]
+                        try:
+                            current_soc_level_max_data = np.array(current_pt_soc_level_max_data[COLUMN_NAMES.value])
+                        except:
+                            logging.warning(f'Issue to access SOC level min data for {country} and {agg_pt} -> set to 0')
+                            current_soc_level_max_data = 1e12  # Q: ok to set constant float and not a vector for this PyPSA attr.?
+                        current_assets_data[agg_pt][GenUnitsCustomParams.soc_min] = current_soc_level_min_data
+                        current_assets_data[agg_pt][GenUnitsCustomParams.soc_max] = current_soc_level_max_data
 
                 # specific parameters for failure
                 elif agg_pt == ProdTypeNames.failure:
@@ -730,3 +765,17 @@ class Dataset:
                               errors_list=pypsa_params_errors_list)
         else:
             logging.info('PyPSA NEEDED PARAMETERS FOR GENERATION UNITS CREATION HAVE BEEN LOADED!')
+
+    def get_hydro_params_for_extr_levels_const(self) -> (Dict[str, np.ndarray], Dict[str, np.ndarray], Dict[str, float]):
+        hydro_reservoirs_data = {country: select_gen_units_data(gen_units_data=units_data,
+                                                                countries=[set_country_trigram(country=country)],
+                                                                unit_types=[ProdTypeNames.hydro_reservoir])
+                                                                for country, units_data in self.generation_units_data.items()}
+        hydro_soc_min = {elt.name: elt.soc_min
+                        for c, reservoirs_data in hydro_reservoirs_data.items() for elt in reservoirs_data}
+        hydro_soc_max = {elt.name: elt.soc_max 
+                            for c, reservoirs_data in hydro_reservoirs_data.items() for elt in reservoirs_data}
+        # energy capacity, obtained as power capacity * max_hours duration
+        hydro_e_capa = {elt.name: float(elt.max_hours * elt.p_nom)
+                        for c, reservoirs_data in hydro_reservoirs_data.items() for elt in reservoirs_data}
+        return hydro_soc_min, hydro_soc_max, hydro_e_capa

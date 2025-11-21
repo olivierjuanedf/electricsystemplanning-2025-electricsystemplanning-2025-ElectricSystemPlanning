@@ -25,3 +25,23 @@ class GenUnitsPypsaParams:
 
 
 GEN_UNITS_PYPSA_PARAMS = GenUnitsPypsaParams()
+
+
+@dataclass
+class GenUnitsCustomParams:
+    soc_min: str = 'soc_min'
+    soc_max: str = 'soc_max'
+    
+
+@dataclass
+class PypsaOptimVarNames:
+    # related to generators
+    generators_p: str = 'Generator-p'
+    # related to storage units
+    storage_p_dispatch: str = 'StorageUnit-p_dispatch'
+    storage_p_store: str = 'StorageUnit-p_store'
+    storage_soc: str = 'StorageUnit-state_of_charge'
+    storage_spill: str = 'StorageUnit-spill'
+    # related to links
+    links_p: str = 'Link-p'
+    

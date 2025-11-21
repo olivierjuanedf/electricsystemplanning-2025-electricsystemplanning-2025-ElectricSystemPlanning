@@ -2,7 +2,7 @@
   "team": "france",
   "selected_prod_types": {
     "france": [
-      "nuclear", "wind_onshore"
+      "nuclear", "wind_onshore", "hydro_reservoir"
     ],
     "germany": ["coal"]
   },

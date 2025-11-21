@@ -14,7 +14,7 @@ from copy import deepcopy
 
 from common.constants.countries import set_country_trigram
 from common.constants.optimisation import OptimSolvers, DEFAULT_OPTIM_SOLVER_PARAMS, SolverParams
-from common.constants.pypsa_params import GEN_UNITS_PYPSA_PARAMS
+from common.constants.pypsa_params import GEN_UNITS_PYPSA_PARAMS, PypsaOptimVarNames
 from common.error_msgs import print_errors_list
 from common.fuel_sources import FuelSource
 from common.long_term_uc_io import (get_marginal_prices_file, get_network_figure, get_opt_power_file,
@@ -45,6 +45,8 @@ class GenerationUnitData:
     max_hours: float = None
     cyclic_state_of_charge: bool = None
     inflow: np.ndarray = None
+    soc_min: np.ndarray = None
+    soc_max: np.ndarray = None
     state_of_charge_initial: float = None
 
     def get_non_none_attr_names(self):
@@ -61,9 +63,17 @@ class GenerationUnitData:
 UNIT_NAME_SEP = '_'
 
 
+def select_gen_units_data(gen_units_data: List[GenerationUnitData], countries: List[str], 
+                          unit_types: List[str]) -> List[GenerationUnitData]:
+    return [elt for elt in gen_units_data if get_country_from_unit_name(elt.name) in countries and elt.type in unit_types]
+
+
 def get_prod_type_from_unit_name(prod_unit_name: str) -> str:
-    len_country_suffix = 3 + len(UNIT_NAME_SEP)
-    return prod_unit_name[len_country_suffix:]
+    return prod_unit_name.split(UNIT_NAME_SEP)[1]
+
+
+def get_country_from_unit_name(prod_unit_name: str) -> str:
+    return prod_unit_name.split(UNIT_NAME_SEP)[0]
 
 
 def set_gen_unit_name(country: str, agg_prod_type: str) -> str:
@@ -162,7 +172,6 @@ class PypsaModel:
     DEFAULT_CARRIER = 'ac'
 
     def init_pypsa_network(self, date_idx: pd.Index, date_range: pd.DatetimeIndex = None):
-        # TODO: type date_idx, date_range
         logging.info('Initialize PyPSA network')
         self.network = pypsa.Network(name=self.name, snapshots=date_idx)
         if date_range is not None:
@@ -293,6 +302,33 @@ class PypsaModel:
         link_names = self.get_link_names()
         logging.info(f'Considered links - the ones with nonzero capacity ({len(link_names)}), in alphabetic order '
                      f'of origin: {set_per_origin_bus_links_msg(link_names=link_names)}')
+
+    def build_model_before_adding_custom_const(self):
+        logging.warning('In PyPSA 0.35.1 not possible to build only model without solving it; to add custome constraints it will be solved first "for fun" (ignoring the solution)')
+        # TODO: see if deactivate resolution logs, in cmd windows/log file
+        self.network.optimize(build_only=True, solver_options={'logfile': '/dev/null'})
+
+    def add_hydro_extreme_levels_constraint(self, soc_min: Dict[str, np.ndarray], soc_max: Dict[str, np.ndarray], 
+                                            energy_capa: Dict[str, np.ndarray]):
+        """
+        Add constraint on hydro extreme SOC levels
+        :param soc_min: dict {unit name: soc min vector}
+        :param soc_max: idem, max
+        :param energy_capa: dict {unit name: energy capa value}
+        """
+        bob = 1
+        # check if soc_min/max values induce a real constraint (not all 0/bigger than energy capacity)
+        # TODO: loop over bus?
+        # hydro_soc = self.network.model.variables[PypsaOptimVarNames.storage_soc]["battery"]
+        # self.network.model.add_constraints(hydro_soc >= soc_min_profile.values, name="soc_min")
+        # self.network.model.add_constraints(hydro_soc <= soc_max_profile.values, name="soc_max")
+    
+    def add_hydro_extreme_gen_constraint(self):
+        bob = 1
+        # # Generator production constraints
+        # gen_p = m.variables["Generator-p"]["gen"]
+        # m.add_constraints(gen_p >= gen_min_profile.values, name="gen_min")
+        # m.add_constraints(gen_p <= gen_max_profile.values, name="gen_max")
 
     def get_bus_names(self) -> List[str]:
         return list(set(self.network.buses.index))
@@ -675,14 +711,15 @@ def get_country_bus_name(country: str) -> str:
 STORAGE_LIKE_UNITS = ['batteries', 'flexibility', 'hydro']
 
 
-def add_loads(network, demand: Dict[str, pd.DataFrame]):
-    print("Add loads - associated to their respective buses")
-    for country in demand:
-        country_bus_name = get_country_bus_name(country=country)
-        load_data = {"name": f"{country_bus_name}-load", "bus": f"{country_bus_name}",
-                     "carrier": "AC", "p_set": demand[country]["value"].values}
-        network.add("Load", **load_data)
-    return network
+# TODO: suppr?
+# def add_loads(network, demand: Dict[str, pd.DataFrame]):
+#     print("Add loads - associated to their respective buses")
+#     for country in demand:
+#         country_bus_name = get_country_bus_name(country=country)
+#         load_data = {"name": f"{country_bus_name}-load", "bus": f"{country_bus_name}",
+#                      "carrier": "AC", "p_set": demand[country]["value"].values}
+#         network.add("Load", **load_data)
+#     return network
 
 
 def get_current_interco_capa(interco_capas: Dict[Tuple[str, str], float], country_origin: str,
