@@ -21,7 +21,7 @@ from common.uc_run_params import UCRunParams
 from include.dataset_builder import GenerationUnitData, set_gen_unit_name, select_gen_units_data, set_country_trigram
 from utils.basic_utils import get_intersection_of_lists
 from utils.df_utils import create_dict_from_cols_in_df, selec_in_df_based_on_list, set_aggreg_col_based_on_corresp, \
-    create_dict_from_df_row, resample_and_distribute, get_subdf_from_date_range
+    create_dict_from_df_row, resample_and_distribute
 from utils.dir_utils import uniformize_path_os
 from utils.eraa_data_reader import filter_input_data, gen_capa_pt_str_sanitizer, select_interco_capas, \
     set_aggreg_cf_prod_types_data, read_and_process_hydro_data

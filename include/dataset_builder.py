@@ -10,7 +10,6 @@ from typing import Dict, List, Tuple, Optional, Union
 from dataclasses import dataclass
 import pypsa
 import matplotlib.pyplot as plt
-from copy import deepcopy
 
 from common.constants.countries import set_country_trigram
 from common.constants.optimisation import OptimSolvers, DEFAULT_OPTIM_SOLVER_PARAMS, SolverParams
