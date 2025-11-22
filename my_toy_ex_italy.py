@@ -268,7 +268,7 @@ result = pypsa_model.optimize_network(year=uc_run_params.selected_target_year, n
                                       period_start=uc_run_params.uc_period_start, save_lp_file=True,
                                       toy_model_output=True, countries=[country])
 print(f'PyPSA result: {result}')  # Check 2nd component of result, the resolution status (optimal?)
-# Get optim. pb size info. (to check if coherent with resolution time?!)
+# Get optim. pb main characteristics (to check if coherent with resolution time?!)
 optim_pb_characts = pypsa_model.get_optim_pb_characteristics()
 print(f'Corresp. to solved {str(optim_pb_characts)}')
 

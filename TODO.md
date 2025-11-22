@@ -41,16 +41,18 @@ DA7) Replace [-2] by an adaptive index to refer to extra-params idx at some stag
 DA8) Allow case (extract, load duration curve) - currently only possible to plot it
 
 TOY EX (T) - my_toy_ex_italy.py
-T5) Fullfill long_term_uc/toy_model_params/ex_italy-complem_parameters.py with complem exs in Ita case (hydro, batteries)
-T7) Do NOT mention diff of PV key between capa and CF data -> confusing for the students...
-#################### LATER  ################
-T2) Keep FUEL_SOURCES or too complex for the students?
-T8) Add min/max soc and generation constraints for the stock/hydro
+T1) Fullfill long_term_uc/toy_model_params/italy_parameters.py with complem exs in Ita case (hydro, batteries, dsr)
+T2) Do NOT mention diff of PV key between capa and CF data -> confusing for the students...
+T3) Keep FUEL_SOURCES or too complex for the students?
+-> may be redundant with input/long_term_uc/elec-europe_params_fixed.json -> CONFUSING!
+T4) Add min/max soc and generation constraints for the stock/hydro
 -> needs to do it via Linopy (even for 1.0 version)
 In Store object e_min_pu/e_max_pu but some other key params seem to be missing... (recommended in v1.0
 doc to use Storage for hydro...)
 -> cf. include\dataset_builder.py add_hydro_extreme_levels_constraint and add_hydro_extreme_gen_constraint functions init
-T9) Add dyn constraints, and associated params in input (JSON) files
+T5) Add dyn constraints, and associated params in input (JSON) files
+T6) Introduce possibility to parametrize init_soc in input/long_term_uc/elec-europe_params_to-be-modif.json
+-> in some extra-params section to be introduced?
 
 EUROPE SIMUS (E) (my_little_europe_lt_uc.py)
 E2) Integrate hydraulic storages... with inflows/min SOC data from ERAA

@@ -130,6 +130,9 @@ def solve_pypsa_network_model(pypsa_model: PypsaModel, year: int, n_countries: i
     # with gurobi.lic file provided at root of this project (see readme.md on procedure to obtain such a lic file)
     pypsa_model.set_optim_solver(solver_params=solver_params)
     result = pypsa_model.optimize_network(year=year, n_countries=n_countries, period_start=uc_period_start)
+    # Get optim. pb main characteristics (to check if coherent with resolution time?!)
+    optim_pb_characts = pypsa_model.get_optim_pb_characteristics()
+    logging.info(f'Corresp. to solved {str(optim_pb_characts)}')
     return result
 
 
