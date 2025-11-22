@@ -14,6 +14,12 @@ def get_country_from_unit_name(prod_unit_name: str) -> str:
 
 
 def get_prod_type_from_unit_name(prod_unit_name: str) -> str:
-    return prod_unit_name.split(UNIT_NAME_SEP)[1]
+    """
+    ATTENTION tricky cases if '_' in prod type... the rule is to take the str after country name + separator
+    Args:
+        prod_unit_name:
 
-
+    Returns:
+    """
+    country = get_country_from_unit_name(prod_unit_name=prod_unit_name)
+    return prod_unit_name[len(country) + len(UNIT_NAME_SEP):]

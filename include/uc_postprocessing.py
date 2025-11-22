@@ -10,7 +10,7 @@ import pypsa
 from matplotlib import pyplot as plt
 
 from common.constants.countries import set_country_trigram
-from common.constants.generation_units import set_gen_unit_name
+from common.constants.generation_units import set_gen_unit_name, get_prod_type_from_unit_name
 from common.long_term_uc_io import FigNamesPrefix, get_output_figure, get_figure_file_named, get_opt_power_file, \
     get_storage_opt_dec_file, get_marginal_prices_file, get_link_flow_opt_dec_file, get_uc_summary_file
 from common.plot_params import PlotParams
@@ -151,27 +151,34 @@ class UCOptimalSolution:
         self.link_capa_dual = None
 
     def plot_prod(self, plot_params_agg_pt: PlotParams, country: str, year: int, climatic_year: int,
-                  start_horizon: datetime, toy_model_output: bool = False, rm_all_zero_curves: bool = True):
+                  start_horizon: datetime, toy_model_output: bool = False, rm_all_zero_curves: bool = True,
+                  include_storage: bool = False):
         """
         Plot 'stack' of optimized production profiles
         """
         # catch DeprecationWarnings TODO: fix/more robust way to catch them?
-        with warnings.catch_warnings():
+        with (warnings.catch_warnings()):
             warnings.simplefilter("ignore")
             # sort values to get only prod of given country
             country_trigram = set_country_trigram(country=country)
-            country_prod_cols = [prod_unit_name for prod_unit_name in list(self.prod)
-                                 if prod_unit_name.startswith(country_trigram)]
-            current_prod_var_opt = self.prod[country_prod_cols]
+            country_prod_cols = [unit_name for unit_name in list(self.prod) if unit_name.startswith(country_trigram)]
+            current_prod = self.prod[country_prod_cols]
+            # include storage prod and cons. data in this plot
+            if include_storage:
+                current_storage_prod_cols = [unit_name for unit_name in list(self.storage_prod)
+                                             if unit_name.startswith(country_trigram)]
+                country_prod_cols.extend(current_storage_prod_cols)
+                current_storage_prod = self.storage_prod[current_storage_prod_cols]
+                current_storage_cons = self.storage_cons[current_storage_prod_cols]
+                current_prod = pd.concat([current_prod, current_storage_cons, current_storage_prod], axis=1)
             # suppress trigram from prod unit names to simplify legend in figures
-            new_prod_cols = {col: col[4:] for col in country_prod_cols}
-            current_prod_var_opt = rename_df_columns(df=current_prod_var_opt, old_to_new_cols=new_prod_cols)
-            current_prod_var_opt = set_col_order_for_plot(df=current_prod_var_opt,
-                                                          cols_ordered=plot_params_agg_pt.order)
+            new_prod_cols = {unit_name: get_prod_type_from_unit_name(prod_unit_name=unit_name)
+                             for unit_name in country_prod_cols}
+            current_prod = rename_df_columns(df=current_prod, old_to_new_cols=new_prod_cols)
+            current_prod = set_col_order_for_plot(df=current_prod, cols_ordered=plot_params_agg_pt.order)
             if rm_all_zero_curves:
-                current_prod_var_opt = sort_out_cols_with_zero_values(df=current_prod_var_opt, abs_val_threshold=1e-2)
-            current_prod_var_opt.div(1e3).plot.area(subplots=False, ylabel='GW',
-                                                    color=plot_params_agg_pt.per_case_color)
+                current_prod = sort_out_cols_with_zero_values(df=current_prod, abs_val_threshold=1e-2)
+            current_prod.div(1e3).plot.area(subplots=False, ylabel='GW', color=plot_params_agg_pt.per_case_color)
             plt.tight_layout()
             plt.savefig(get_output_figure(fig_name=FigNamesPrefix.production, country=country, year=year,
                                           climatic_year=climatic_year, start_horizon=start_horizon,

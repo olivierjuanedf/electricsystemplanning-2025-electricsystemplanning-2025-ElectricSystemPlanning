@@ -39,7 +39,7 @@ def get_generators(country_trigram: str, fuel_sources: Dict[str, FuelSource], wi
     inflows_sensitivity_coeff = 0.5
     generators = [
         {
-            GEN_UNITS_PYPSA_PARAMS.name: f'{country_trigram}_hard-coal',
+            GEN_UNITS_PYPSA_PARAMS.name: f'{country_trigram}_hard_coal',
             GEN_UNITS_PYPSA_PARAMS.carrier: FuelNames.coal,
             GEN_UNITS_PYPSA_PARAMS.nominal_power: 2362,
             GEN_UNITS_PYPSA_PARAMS.marginal_cost: fuel_sources[FuelNames.coal].primary_cost * 0.37,
@@ -60,35 +60,35 @@ def get_generators(country_trigram: str, fuel_sources: Dict[str, FuelSource], wi
             GEN_UNITS_PYPSA_PARAMS.efficiency: 0.4
         },
         {
-            GEN_UNITS_PYPSA_PARAMS.name: f'{country_trigram}_other-non-renewables',
+            GEN_UNITS_PYPSA_PARAMS.name: f'{country_trigram}_other_non_renewables',
             GEN_UNITS_PYPSA_PARAMS.carrier: FuelNames.other_non_renewables,
             GEN_UNITS_PYPSA_PARAMS.nominal_power: 8239,
             GEN_UNITS_PYPSA_PARAMS.marginal_cost: fuel_sources[FuelNames.other_non_renewables].primary_cost * 0.4,
             GEN_UNITS_PYPSA_PARAMS.efficiency: 0.4
         },
         {
-            GEN_UNITS_PYPSA_PARAMS.name: f'{country_trigram}_wind-on-shore',
+            GEN_UNITS_PYPSA_PARAMS.name: f'{country_trigram}_wind_on_shore',
             GEN_UNITS_PYPSA_PARAMS.carrier: FuelNames.wind,
             GEN_UNITS_PYPSA_PARAMS.nominal_power: 14512,
             GEN_UNITS_PYPSA_PARAMS.max_power_pu: wind_on_shore_cf_data['value'].values,
             GEN_UNITS_PYPSA_PARAMS.marginal_cost: fuel_sources[FuelNames.wind].primary_cost
         },
         {
-            GEN_UNITS_PYPSA_PARAMS.name: f'{country_trigram}_wind-off-shore',
+            GEN_UNITS_PYPSA_PARAMS.name: f'{country_trigram}_wind_off_shore',
             GEN_UNITS_PYPSA_PARAMS.carrier: FuelNames.wind,
             GEN_UNITS_PYPSA_PARAMS.nominal_power: 791,
             GEN_UNITS_PYPSA_PARAMS.max_power_pu: wind_off_shore_cf_data['value'].values,
             GEN_UNITS_PYPSA_PARAMS.marginal_cost: fuel_sources[FuelNames.wind].primary_cost
         },
         {
-            GEN_UNITS_PYPSA_PARAMS.name: f'{country_trigram}_solar-pv',
+            GEN_UNITS_PYPSA_PARAMS.name: f'{country_trigram}_solar_pv',
             GEN_UNITS_PYPSA_PARAMS.carrier: FuelNames.solar,
             GEN_UNITS_PYPSA_PARAMS.nominal_power: 39954,
             GEN_UNITS_PYPSA_PARAMS.max_power_pu: solar_pv_cf_data['value'].values,
             GEN_UNITS_PYPSA_PARAMS.marginal_cost: fuel_sources[FuelNames.solar].primary_cost
         },
         {
-            GEN_UNITS_PYPSA_PARAMS.name: f'{country_trigram}_other-renewables',
+            GEN_UNITS_PYPSA_PARAMS.name: f'{country_trigram}_other_renewables',
             GEN_UNITS_PYPSA_PARAMS.carrier: FuelNames.other_renewables,
             GEN_UNITS_PYPSA_PARAMS.nominal_power: 4466,
         },
@@ -104,7 +104,7 @@ def get_generators(country_trigram: str, fuel_sources: Dict[str, FuelSource], wi
          GEN_UNITS_PYPSA_PARAMS.efficiency_dispatch: 0.95
         },
         # this is an hydro reservoir - with very fictive values!
-        {GEN_UNITS_PYPSA_PARAMS.name: f'{country_trigram}_hydro-reservoir',
+        {GEN_UNITS_PYPSA_PARAMS.name: f'{country_trigram}_hydro_reservoir',
          GEN_UNITS_PYPSA_PARAMS.carrier: 'Hydro', 
          GEN_UNITS_PYPSA_PARAMS.nominal_power: 10000,
          GEN_UNITS_PYPSA_PARAMS.max_hours: 1000,
@@ -113,7 +113,7 @@ def get_generators(country_trigram: str, fuel_sources: Dict[str, FuelSource], wi
         },        
         # this is an hydro reservoir - now with ERAA inflows data! 
         # N.B. Same can be done for open-loop pump storage asset
-        {GEN_UNITS_PYPSA_PARAMS.name: f'{country_trigram}_hydro-reservoir',
+        {GEN_UNITS_PYPSA_PARAMS.name: f'{country_trigram}_hydro_reservoir',
          GEN_UNITS_PYPSA_PARAMS.carrier: 'Hydro', 
          GEN_UNITS_PYPSA_PARAMS.nominal_power: 10000,
          GEN_UNITS_PYPSA_PARAMS.max_hours: 1000,

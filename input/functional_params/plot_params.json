@@ -20,9 +20,10 @@
         "others_fatal": "green",
         "solar_pv": "yellow",
         "solar_thermal": "orange",
-        "wind_offshore": "magenta",
-        "wind_onshore": "purple",
-        "other_renewables": "cyan"
+        "wind_off_shore": "magenta",
+        "wind_on_shore": "purple",
+        "other_renewables": "cyan",
+        "other_non_renewables": "slategrey"
       },
       "eco2mix": {
         "batteries": null,
@@ -40,8 +41,10 @@
         "others_fatal": null,
         "solar_pv": "orange",
         "solar_thermal": "orange",
-        "wind_offshore": null,
-        "wind_onshore": null
+        "wind_off_shore": null,
+        "wind_on_shore": null,
+        "other_renewables": null,
+        "other_non_renewables": null
       }
     },
     "markers_def": {
@@ -61,15 +64,18 @@
         "others_fatal": "P",
         "solar_pv": "^",
         "solar_thermal": "<",
-        "wind_offshore": "s",
-        "wind_onshore": "8"
+        "wind_off_shore": "s",
+        "wind_on_shore": "8",
+        "other_renewables": "P",
+        "other_non_renewables": "^"
       }
     },
     "order": [
-      "wind_onshore",
-      "wind_offshore",
+      "wind_on_shore",
+      "wind_off_shore",
       "solar_pv",
       "solar_thermal",
+      "other_renewables",
       "others_fatal",
       "hydro_pondage",
       "hydro_run_of_river",
@@ -78,6 +84,7 @@
       "hydro_reservoir",
       "nuclear",
       "biofuel",
+      "other_non_renewables",
       "coal",
       "gas",
       "oil",
