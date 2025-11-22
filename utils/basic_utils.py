@@ -4,7 +4,8 @@ import numpy as np
 import math
 from dataclasses import fields, MISSING
 
-CLIM_YEARS_SUFFIX = 'clim-years'
+
+CLIM_YEARS_SUFFIX = 'clim-years'  # TODO: set this constant in a more logical place... constant\...
 
 
 def str_sanitizer(raw_str: Optional[str], replace_empty_char: bool = True,
@@ -154,6 +155,11 @@ def get_all_attr_names(obj) -> List[str]:
     return [f.name for f in fields(obj)]
 
 
+def get_default_values(obj) -> list:
+    return [f.default if f.default is not MISSING else f.default_factory() for f in fields(obj)
+            if f.default is not MISSING or f.default_factory is not MISSING]
+
+
 def get_first_level_with_multiple_vals(tuple_list: List[tuple], init_level: int = None,
                                        return_none_if_not_found: bool = False) -> Optional[int]:
     if init_level is None:
@@ -197,11 +203,6 @@ def sort_lexicographically(strings: list[str]) -> list[str]:
 def check_all_values_equal(d: dict) -> bool:
     """
     Check that all values in a nested dict. are equal
-    Args:
-        d:
-
-    Returns:
-
     """
     values = []
 

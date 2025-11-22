@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from typing import Dict, List, Union, Optional, Tuple
 
 from common.constants.datadims import DataDimensions
+from common.constants.generation_units import add_suffix_to_storage_unit_col
+from common.constants.prod_types import STOCK_LIKE_PROD_TYPES
 
 
 def to_int_keys_dict(dict_with_level_two_str_keys: Dict[str, Dict[str, str]]) -> Optional[Dict[str, Dict[int, str]]]:
@@ -80,6 +82,18 @@ class PlotParams:
     def check(self):
         # TODO: check TB coded
         logging.warning('Not coded for now')
+
+    def add_colors_for_stock_with_suffix(self):
+        """
+        During the execution of the code if both prod. and cons. of stock-like assets are plotted on the same graph,
+        the color dictionary needs to be enriched with - identical - colors for this 'cases with suffix'
+        """
+        added_colors = {}
+        for prod_type, color in self.per_case_color.items():
+            if prod_type in STOCK_LIKE_PROD_TYPES:
+                added_colors |= {add_suffix_to_storage_unit_col(col=prod_type, col_type='prod'): color,
+                                 add_suffix_to_storage_unit_col(col=prod_type, col_type='cons'): color}
+        self.per_case_color |= added_colors
 
 
 @dataclass

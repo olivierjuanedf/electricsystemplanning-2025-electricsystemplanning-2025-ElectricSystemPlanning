@@ -19,9 +19,14 @@ class ProdTypeNames:  # by alpha. order
     lignite: str = 'lignite'
     nuclear: str = 'nuclear'
     oil: str = 'oil'
-    others_non_renewable: str = 'others_non-renewable'
+    others_non_renewable: str = 'others_non-renewable'  # TODO: with '_' instead of '-'? (TB tested)
     others_renewable: str = 'others_renewable'
     solar_pv: str = 'solar_pv'
     solar_thermal: str = 'solar_thermal'
     wind_offshore: str = 'wind_offshore'
     wind_onshore: str = 'wind_onshore'
+
+
+STOCK_LIKE_PROD_TYPES = [ProdTypeNames.hydro_reservoir, ProdTypeNames.hydro_pump_storage_closed,
+                         ProdTypeNames.hydro_pump_storage_open, ProdTypeNames.batteries,
+                         ProdTypeNames.demand_side_response]

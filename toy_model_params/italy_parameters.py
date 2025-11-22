@@ -13,7 +13,7 @@ gps_coords = (12.5674, 41.8719)
 
 def get_generators(country_trigram: str, fuel_sources: Dict[str, FuelSource], wind_on_shore_cf_data: pd.DataFrame,
                    wind_off_shore_cf_data: pd.DataFrame, solar_pv_cf_data: pd.DataFrame,
-                   hydro_reservoir_inflows_data: pd.DataFrame = None, 
+                   hydro_reservoir_inflows_data: pd.DataFrame = None,
                    open_loop_pump_sto_inflows_data: pd.DataFrame = None) -> List[GENERATOR_DICT_TYPE]:
     """
     Get list of generators to be set on a given node of a PyPSA model
@@ -94,7 +94,7 @@ def get_generators(country_trigram: str, fuel_sources: Dict[str, FuelSource], wi
         },
         # this is a battery
         {GEN_UNITS_PYPSA_PARAMS.name: f'{country_trigram}_battery',
-         GEN_UNITS_PYPSA_PARAMS.carrier: 'Flexibility', 
+         GEN_UNITS_PYPSA_PARAMS.carrier: 'Flexibility',
          GEN_UNITS_PYPSA_PARAMS.nominal_power: 4000,
          GEN_UNITS_PYPSA_PARAMS.min_power_pu: -1,
          GEN_UNITS_PYPSA_PARAMS.max_power_pu: 1,
@@ -102,25 +102,25 @@ def get_generators(country_trigram: str, fuel_sources: Dict[str, FuelSource], wi
          GEN_UNITS_PYPSA_PARAMS.soc_init: 1000,
          GEN_UNITS_PYPSA_PARAMS.efficiency_store: 0.95,
          GEN_UNITS_PYPSA_PARAMS.efficiency_dispatch: 0.95
-        },
+         },
         # this is an hydro reservoir - with very fictive values!
         {GEN_UNITS_PYPSA_PARAMS.name: f'{country_trigram}_hydro_reservoir',
-         GEN_UNITS_PYPSA_PARAMS.carrier: 'Hydro', 
+         GEN_UNITS_PYPSA_PARAMS.carrier: 'Hydro',
          GEN_UNITS_PYPSA_PARAMS.nominal_power: 10000,
          GEN_UNITS_PYPSA_PARAMS.max_hours: 1000,
          GEN_UNITS_PYPSA_PARAMS.soc_init: 1000000,
          GEN_UNITS_PYPSA_PARAMS.inflow: np.ones(n_ts)
-        },        
+         },
         # this is an hydro reservoir - now with ERAA inflows data! 
         # N.B. Same can be done for open-loop pump storage asset
         {GEN_UNITS_PYPSA_PARAMS.name: f'{country_trigram}_hydro_reservoir',
-         GEN_UNITS_PYPSA_PARAMS.carrier: 'Hydro', 
+         GEN_UNITS_PYPSA_PARAMS.carrier: 'Hydro',
          GEN_UNITS_PYPSA_PARAMS.nominal_power: 10000,
          GEN_UNITS_PYPSA_PARAMS.max_hours: 1000,
          GEN_UNITS_PYPSA_PARAMS.soc_init: 1000000,
-         GEN_UNITS_PYPSA_PARAMS.inflow: 
-         inflows_sensitivity_coeff * hydro_reservoir_inflows_data['value'].values
-        },        
+         GEN_UNITS_PYPSA_PARAMS.inflow:
+             inflows_sensitivity_coeff * hydro_reservoir_inflows_data['value'].values
+         },
         # QUESTION: what is this - very necessary - last fictive asset?
         {
             GEN_UNITS_PYPSA_PARAMS.name: f'{country_trigram}_failure',

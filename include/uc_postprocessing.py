@@ -10,11 +10,12 @@ import pypsa
 from matplotlib import pyplot as plt
 
 from common.constants.countries import set_country_trigram
-from common.constants.generation_units import set_gen_unit_name, get_prod_type_from_unit_name
+from common.constants.generation_units import set_gen_unit_name, get_prod_type_from_unit_name, add_suffix_to_storage_unit_col
+from common.constants.prod_types import STOCK_LIKE_PROD_TYPES, ProdTypeNames
 from common.long_term_uc_io import FigNamesPrefix, get_output_figure, get_figure_file_named, get_opt_power_file, \
     get_storage_opt_dec_file, get_marginal_prices_file, get_link_flow_opt_dec_file, get_uc_summary_file
 from common.plot_params import PlotParams
-from utils.basic_utils import format_with_spaces
+from utils.basic_utils import format_with_spaces, get_default_values
 from utils.df_utils import rename_df_columns, sort_out_cols_with_zero_values
 
 
@@ -33,12 +34,70 @@ def dict_to_str(d: Dict[str, float], nbers_with_spaces: bool = False) -> str:
 OUTPUT_DATE_COL = 'date'
 
 
-def set_col_order_for_plot(df: pd.DataFrame, cols_ordered: List[str], stock_cons_first: bool = True) -> pd.DataFrame:
+def set_full_prod_type_col_order(prod_type_cols_ordered: List[str], stock_cons_first: bool = True) -> List[str]:
+    """
+    Update cols_ordered with prod/cons suffix for storage assets
+    Args:
+        prod_type_cols_ordered:
+        stock_cons_first: put first all cons. columns of the storage-like assets; otherwise storage columns with
+        cons./prod. (e.g., 'hydro_reservoir_prod') suffix will be added just after the corresponding one without
+        suffix (e.g., 'hydro_reservoir')
+    Returns:
+
+    """
+    # check that columns are all prod types
+    known_prod_types = get_default_values(obj=ProdTypeNames)
+    unknown_prod_types = set(prod_type_cols_ordered) - set(known_prod_types)
+    if len(unknown_prod_types) > 0:
+        logging.warning(f'Unknown production types in columns to be completed with stock-columns with-added-suffix '
+                        f'("_prod", or "_cons"): {unknown_prod_types}\n-> will not be integrated in plot')
+        prod_type_cols_ordered = [pt_col for pt_col in prod_type_cols_ordered if pt_col in known_prod_types]
+    # case with _cons columns for stock-like assets first
+    if stock_cons_first:
+        cols_ordered_stock_cons = [add_suffix_to_storage_unit_col(col=col, col_type='cons')
+                                   for col in prod_type_cols_ordered if col in STOCK_LIKE_PROD_TYPES]
+        pt_cols_ordered_prod_compl = []
+        for pt_col in prod_type_cols_ordered:
+            # col without suffix (+ with prod suffix if storage-like prod type)
+            pt_cols_ordered_prod_compl.append(pt_col)
+            if pt_col in STOCK_LIKE_PROD_TYPES:
+                pt_cols_ordered_prod_compl.append(add_suffix_to_storage_unit_col(col=pt_col, col_type='prod'))
+        # concat. cons and prod columns
+        cols_ordered_stock_cons.extend(pt_cols_ordered_prod_compl)
+        return cols_ordered_stock_cons
+    # case with _cons columns for stock-like asset just after their pt (wo suffix)
+    pt_cols_ordered_compl = []
+    cons_first = True
+    for pt_col in prod_type_cols_ordered:
+        # col without suffix (+ with prod suffix if storage-like prod type)
+        pt_cols_ordered_compl.append(pt_col)
+        if pt_col in STOCK_LIKE_PROD_TYPES:
+            pt_col_cons = add_suffix_to_storage_unit_col(col=pt_col, col_type='cons')
+            pt_col_prod = add_suffix_to_storage_unit_col(col=pt_col, col_type='prod')
+            added_pt_cols = [pt_col_cons, pt_col_prod] if cons_first else [pt_col_prod, pt_col_cons]
+            pt_cols_ordered_compl.extend(added_pt_cols)
+    return pt_cols_ordered_compl
+
+
+def set_col_order_for_plot(df: pd.DataFrame, cols_ordered: List[str], is_prod_type_cols: bool = False,
+                           stock_cons_first: bool = True) -> pd.DataFrame:
+    """
+    Set column order in a df for plot
+    Args:
+        df: considered dataframe for plot
+        cols_ordered: predefined order of columns in plot - see input\functional_params\plot_params.json
+        is_prod_type_cols: are columns prod types?
+        stock_cons_first: put consumption columns of the stock first?
+
+    Returns: df with columns in requested order
+    """
     current_df_cols = list(df.columns)
-    # put first consumption of storage-like assets -> to get the negative part seen below x-axis
-    current_df_cols_ordered = []
-    # TODO: ok with both prod/cons?
-    current_df_cols_ordered = [col for col in cols_ordered if col in current_df_cols]
+    if is_prod_type_cols:
+        cols_ordered_completed = set_full_prod_type_col_order(prod_type_cols_ordered=cols_ordered,
+                                                              stock_cons_first=stock_cons_first)
+    else:
+        cols_ordered_completed = cols_ordered
+    current_df_cols_ordered = [col for col in cols_ordered_completed if col in current_df_cols]
     df = df[current_df_cols_ordered]
     return df
 
@@ -110,6 +169,25 @@ class UCSummaryMetrics:
             json.dump(summary_dict, f)
 
 
+def add_storage_decisions_to_prod_for_plot(country_trigram: str, generator_prod: pd.DataFrame,
+                                           storage_prod: pd.DataFrame, storage_cons: pd.DataFrame):
+    prod_cols = list(generator_prod.columns)
+    storage_prod_cols = [unit_name for unit_name in list(storage_prod) if unit_name.startswith(country_trigram)]
+    prod_cols.extend(storage_prod_cols)
+    current_storage_prod = storage_prod[storage_prod_cols]
+    current_storage_cons = storage_cons[storage_prod_cols]
+    # Key step; switch to prod. convention for consumption!
+    current_storage_cons *= -1
+    # add suffix to prod/cons columns to distinguish them after concatenation below
+    new_prod_cols = {col: add_suffix_to_storage_unit_col(col=get_prod_type_from_unit_name(prod_unit_name=col),
+                                                         col_type='prod') for col in storage_prod_cols}
+    new_cons_cols = {col: add_suffix_to_storage_unit_col(col=get_prod_type_from_unit_name(prod_unit_name=col),
+                                                         col_type='cons') for col in storage_prod_cols}
+    current_storage_prod = rename_df_columns(df=current_storage_prod, old_to_new_cols=new_prod_cols)
+    current_storage_cons = rename_df_columns(df=current_storage_cons, old_to_new_cols=new_cons_cols)
+    return pd.concat([generator_prod, current_storage_cons, current_storage_prod], axis=1)
+
+
 # TODO: check typing
 class UCOptimalSolution:
     def __init__(self, network_name: str):
@@ -160,25 +238,25 @@ class UCOptimalSolution:
         Plot 'stack' of optimized production profiles
         """
         # catch DeprecationWarnings TODO: fix/more robust way to catch them?
-        with (warnings.catch_warnings()):
+        with ((warnings.catch_warnings())):
             warnings.simplefilter("ignore")
             # sort values to get only prod of given country
             country_trigram = set_country_trigram(country=country)
             country_prod_cols = [unit_name for unit_name in list(self.prod) if unit_name.startswith(country_trigram)]
             current_prod = self.prod[country_prod_cols]
-            # include storage prod and cons. data in this plot
-            if include_storage:
-                current_storage_prod_cols = [unit_name for unit_name in list(self.storage_prod)
-                                             if unit_name.startswith(country_trigram)]
-                country_prod_cols.extend(current_storage_prod_cols)
-                current_storage_prod = self.storage_prod[current_storage_prod_cols]
-                current_storage_cons = self.storage_cons[current_storage_prod_cols]
-                current_prod = pd.concat([current_prod, current_storage_cons, current_storage_prod], axis=1)
             # suppress trigram from prod unit names to simplify legend in figures
             new_prod_cols = {unit_name: get_prod_type_from_unit_name(prod_unit_name=unit_name)
                              for unit_name in country_prod_cols}
             current_prod = rename_df_columns(df=current_prod, old_to_new_cols=new_prod_cols)
-            current_prod = set_col_order_for_plot(df=current_prod, cols_ordered=plot_params_agg_pt.order)
+            # include storage prod and cons. data in this plot
+            if include_storage:
+                current_prod = add_storage_decisions_to_prod_for_plot(
+                    country_trigram=country_trigram, generator_prod=current_prod,
+                    storage_prod=self.storage_prod, storage_cons=self.storage_cons)
+                # add identical colors for the prod type with prod/cons suffix added in df for plot
+                plot_params_agg_pt.add_colors_for_stock_with_suffix()
+            current_prod = set_col_order_for_plot(df=current_prod, cols_ordered=plot_params_agg_pt.order,
+                                                  is_prod_type_cols=True, stock_cons_first=True)
             if rm_all_zero_curves:
                 current_prod = sort_out_cols_with_zero_values(df=current_prod, abs_val_threshold=1e-2)
             current_prod.div(1e3).plot.area(subplots=False, ylabel='GW', color=plot_params_agg_pt.per_case_color)

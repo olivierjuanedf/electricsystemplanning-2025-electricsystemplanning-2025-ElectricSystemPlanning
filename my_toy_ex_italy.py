@@ -296,11 +296,18 @@ if optim_status == pypsa_opt_resol_status:
     from common.constants.datadims import DataDimensions
 
     plot_params_agg_pt, plot_params_zone = get_plots_params()
+    # graph with stack production
     uc_optimal_solution.plot_prod(plot_params_agg_pt=plot_params_agg_pt, country=country,
                                   year=uc_run_params.selected_target_year,
                                   climatic_year=uc_run_params.selected_climatic_year,
                                   start_horizon=uc_run_params.uc_period_start,
                                   toy_model_output=True)
+    # idem, including stock-like prod units (both cons. and prod.) on the stack of curves
+    uc_optimal_solution.plot_prod(plot_params_agg_pt=plot_params_agg_pt, country=country,
+                                  year=uc_run_params.selected_target_year,
+                                  climatic_year=uc_run_params.selected_climatic_year,
+                                  start_horizon=uc_run_params.uc_period_start,
+                                  toy_model_output=True, include_storage=True)
     # Specific production profile: the one of fictive failure asset
     uc_optimal_solution.plot_failure(country=country, year=uc_run_params.selected_target_year,
                                      climatic_year=uc_run_params.selected_climatic_year,

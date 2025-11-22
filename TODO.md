@@ -1,5 +1,7 @@
 TODO
 MAIN actions (M)
+M0) Unique prod types def. in (i) all data files, (ii) constants of the codes (@dataclass) and (iii) input JSON files 
+-> suppressing redundant constants/input data?
 M0) Switch to PyPSA 1.0?
 M0) Update readme.md with new names for project etc...
 M0) Remove unnecessary/redundant constants 
