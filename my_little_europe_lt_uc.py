@@ -16,7 +16,7 @@ from common.long_term_uc_io import set_full_lt_uc_output_folder
 from common.uc_run_params import UCRunParams
 from include.dataset import Dataset
 from include.dataset_builder import PypsaModel
-from include.uc_summary_metrics import UCSummaryMetrics
+from include.uc_postprocessing import UCSummaryMetrics
 from include_runner.overwrite_uc_run_params import apply_fixed_uc_run_params
 from utils.basic_utils import print_non_default
 from utils.dates import get_period_str
