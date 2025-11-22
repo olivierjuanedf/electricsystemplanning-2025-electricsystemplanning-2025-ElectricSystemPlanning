@@ -12,12 +12,12 @@ import pypsa
 import matplotlib.pyplot as plt
 
 from common.constants.countries import set_country_trigram
-from common.constants.generation_units import get_country_from_unit_name
 from common.constants.optimisation import OptimSolvers, DEFAULT_OPTIM_SOLVER_PARAMS, SolverParams
+from common.constants.prod_types import get_country_from_unit_name
 from common.constants.pypsa_params import GEN_UNITS_PYPSA_PARAMS
 from common.error_msgs import print_errors_list
 from common.fuel_sources import FuelSource
-from common.long_term_uc_io import get_network_figure, FigNamesPrefix, get_output_figure, get_uc_summary_file
+from common.long_term_uc_io import get_network_figure, FigNamesPrefix, get_output_figure
 from include.uc_postprocessing import UCSummaryMetrics, UCOptimalSolution
 from utils.basic_utils import (lexico_compar_str, rm_elts_with_none_val, rm_elts_in_str, sort_lexicographically,
                                format_with_spaces)
@@ -314,8 +314,9 @@ class PypsaModel:
         # catch DeprecationWarnings TODO: fix/more robust way to catch them?
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            self.network.plot(title=f'{self.name.capitalize()} network', color_geomap=True, jitter=0.3)
-            plt.savefig(get_network_figure(toy_model_output=toy_model_output, country=country))
+            self.network.plot(title=f'{self.name.capitalize()} PyPSA network', color_geomap=True, jitter=0.3)
+            plt.savefig(get_network_figure(toy_model_output=toy_model_output, country=country,
+                                           n_bus=len(self.network.buses)))
             plt.close()
 
     def set_default_optim_solver(self, warning_msg: str):

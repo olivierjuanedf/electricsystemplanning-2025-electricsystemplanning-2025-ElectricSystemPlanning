@@ -12,8 +12,7 @@ from common.constants.aggreg_operations import AggregOpeNames
 from common.constants.countries import set_country_trigram
 from common.constants.datatypes import DATATYPE_NAMES
 from common.constants.eraa_data import ERAAParamNames
-from common.constants.generation_units import set_gen_unit_name
-from common.constants.prod_types import ProdTypeNames
+from common.constants.prod_types import ProdTypeNames, set_gen_unit_name
 from common.constants.pypsa_params import GEN_UNITS_PYPSA_PARAMS, GenUnitsCustomParams
 from common.error_msgs import print_errors_list
 from common.long_term_uc_io import COLUMN_NAMES, DT_FILE_PREFIX, DT_SUBFOLDERS, FILES_FORMAT, \

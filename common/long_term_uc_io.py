@@ -184,13 +184,16 @@ def get_json_fuel_sources_file() -> str:
     return uniformize_path_os(path_str=os.path.join(INPUT_FUEL_SOURCES_FOLDER, 'params.json'))
 
 
-def get_network_figure(toy_model_output: bool = False, country: str = None, create_subdir: bool = True) -> str:
+def get_network_figure(toy_model_output: bool = False, country: str = None, create_subdir: bool = True,
+                       n_bus: int = None) -> str:
     output_folder = set_full_lt_uc_output_folder(folder_type='figures', country=country,
                                                  toy_model_output=toy_model_output)
     if create_subdir:
         make_dir(full_path=output_folder)
 
-    return f'{output_folder}/network.png'
+    n_bus_suffix = f'_{n_bus}-bus' if n_bus is not None else ''
+
+    return f'{output_folder}/network{n_bus_suffix}.png'
 
 
 def get_output_file_suffix(country: str, year: int, climatic_year: int = None, start_horizon: datetime = None) -> str:

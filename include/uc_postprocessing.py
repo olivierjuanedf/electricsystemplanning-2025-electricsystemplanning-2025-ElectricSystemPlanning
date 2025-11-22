@@ -10,8 +10,8 @@ import pypsa
 from matplotlib import pyplot as plt
 
 from common.constants.countries import set_country_trigram
-from common.constants.generation_units import set_gen_unit_name, get_prod_type_from_unit_name, add_suffix_to_storage_unit_col
-from common.constants.prod_types import STOCK_LIKE_PROD_TYPES, ProdTypeNames
+from common.constants.prod_types import STOCK_LIKE_PROD_TYPES, ProdTypeNames, add_suffix_to_storage_unit_col, \
+    get_prod_type_from_unit_name, set_gen_unit_name
 from common.long_term_uc_io import FigNamesPrefix, get_output_figure, get_figure_file_named, get_opt_power_file, \
     get_storage_opt_dec_file, get_marginal_prices_file, get_link_flow_opt_dec_file, get_uc_summary_file
 from common.plot_params import PlotParams
@@ -259,7 +259,9 @@ class UCOptimalSolution:
                                                   is_prod_type_cols=True, stock_cons_first=True)
             if rm_all_zero_curves:
                 current_prod = sort_out_cols_with_zero_values(df=current_prod, abs_val_threshold=1e-2)
-            current_prod.div(1e3).plot.area(subplots=False, ylabel='GW', color=plot_params_agg_pt.per_case_color)
+            # TODO: put alpha into plot_params.json
+            current_prod.div(1e3).plot.area(subplots=False, ylabel='GW', color=plot_params_agg_pt.per_case_color,
+                                            alpha=0.3)
             # to avoid having the index name in the legend block ('Generator'; not very useful here)
             plt.legend(title=None)
             plt.tight_layout()

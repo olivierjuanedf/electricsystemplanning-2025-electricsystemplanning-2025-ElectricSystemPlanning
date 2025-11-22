@@ -4,8 +4,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Union, Optional, Tuple
 
 from common.constants.datadims import DataDimensions
-from common.constants.generation_units import add_suffix_to_storage_unit_col
-from common.constants.prod_types import STOCK_LIKE_PROD_TYPES
+from common.constants.prod_types import STOCK_LIKE_PROD_TYPES, add_suffix_to_storage_unit_col
 
 
 def to_int_keys_dict(dict_with_level_two_str_keys: Dict[str, Dict[str, str]]) -> Optional[Dict[str, Dict[int, str]]]:

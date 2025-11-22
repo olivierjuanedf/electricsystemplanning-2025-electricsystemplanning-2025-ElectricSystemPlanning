@@ -153,6 +153,12 @@ def save_data_and_fig_results(pypsa_model: PypsaModel, uc_run_params: UCRunParam
                                            climatic_year=uc_run_params.selected_climatic_year,
                                            start_horizon=uc_run_params.uc_period_start)
              )
+            # idem, including stock-like prod units (both cons. and prod.) on the stack of curves
+            uc_optimal_solution.plot_prod(plot_params_agg_pt=plot_params_agg_pt, country=country,
+                                          year=uc_run_params.selected_target_year,
+                                          climatic_year=uc_run_params.selected_climatic_year,
+                                          start_horizon=uc_run_params.uc_period_start,
+                                          include_storage=True)
             (uc_optimal_solution.plot_link_flows(origin_country=country, year=uc_run_params.selected_target_year,
                                                  climatic_year=uc_run_params.selected_climatic_year,
                                                  start_horizon=uc_run_params.uc_period_start)
