@@ -296,16 +296,16 @@ if optim_status == pypsa_opt_resol_status:
     from common.constants.datadims import DataDimensions
 
     plot_params_agg_pt, plot_params_zone = get_plots_params()
-    uc_optimal_solution.plot_opt_prod_var(plot_params_agg_pt=plot_params_agg_pt, country=country,
-                                          year=uc_run_params.selected_target_year,
-                                          climatic_year=uc_run_params.selected_climatic_year,
-                                          start_horizon=uc_run_params.uc_period_start,
-                                          toy_model_output=True)
+    uc_optimal_solution.plot_prod(plot_params_agg_pt=plot_params_agg_pt, country=country,
+                                  year=uc_run_params.selected_target_year,
+                                  climatic_year=uc_run_params.selected_climatic_year,
+                                  start_horizon=uc_run_params.uc_period_start,
+                                  toy_model_output=True)
     # Specific production profile: the one of fictive failure asset
-    uc_optimal_solution.plot_failure_at_opt(country=country, year=uc_run_params.selected_target_year,
-                                            climatic_year=uc_run_params.selected_climatic_year,
-                                            start_horizon=uc_run_params.uc_period_start,
-                                            toy_model_output=True)
+    uc_optimal_solution.plot_failure(country=country, year=uc_run_params.selected_target_year,
+                                     climatic_year=uc_run_params.selected_climatic_year,
+                                     start_horizon=uc_run_params.uc_period_start,
+                                     toy_model_output=True)
     # Finally, plot 'marginal prices' -> QUESTION: meaning?
     # -> saved in file output/long_term_uc/monozone_ita/figures/prices_italy_{year}
     # _{period start, under format %Y-%m-%d}.png
@@ -318,10 +318,10 @@ if optim_status == pypsa_opt_resol_status:
     # Save optimal decisions to output csv files -> you can have look in more detail to the obtained solution
     print('Save optimal dispatch decisions to .csv file')
     # (Per unit type) Production decisions
-    uc_optimal_solution.save_opt_decisions_to_csv(year=uc_run_params.selected_target_year,
-                                                  climatic_year=uc_run_params.selected_climatic_year,
-                                                  start_horizon=uc_run_params.uc_period_start, toy_model_output=True,
-                                                  country=country)
+    uc_optimal_solution.save_decisions_to_csv(year=uc_run_params.selected_target_year,
+                                              climatic_year=uc_run_params.selected_climatic_year,
+                                              start_horizon=uc_run_params.uc_period_start, toy_model_output=True,
+                                              country=country)
 
     # Marginal prices
     uc_optimal_solution.save_marginal_prices_to_csv(year=uc_run_params.selected_target_year,

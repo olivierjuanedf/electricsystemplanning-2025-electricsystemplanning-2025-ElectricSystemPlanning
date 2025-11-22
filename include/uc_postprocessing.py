@@ -150,9 +150,8 @@ class UCOptimalSolution:
         # dual_value = linopy_model.dual[con_obj]
         self.link_capa_dual = None
 
-    def plot_opt_prod_var(self, plot_params_agg_pt: PlotParams, country: str, year: int,
-                          climatic_year: int, start_horizon: datetime, toy_model_output: bool = False,
-                          rm_all_zero_curves: bool = True):
+    def plot_prod(self, plot_params_agg_pt: PlotParams, country: str, year: int, climatic_year: int,
+                  start_horizon: datetime, toy_model_output: bool = False, rm_all_zero_curves: bool = True):
         """
         Plot 'stack' of optimized production profiles
         """
@@ -179,8 +178,8 @@ class UCOptimalSolution:
                                           toy_model_output=toy_model_output))
             plt.close()
 
-    def plot_link_flows_at_opt(self, origin_country: str, year: int, climatic_year: int,
-                               start_horizon: datetime, toy_model_output: bool = False):
+    def plot_link_flows(self, origin_country: str, year: int, climatic_year: int,
+                        start_horizon: datetime, toy_model_output: bool = False):
         # logging.info('Preliminary code for optimal flow plotting to be adapted/tested to get output figures')
         # select links with origin_country as p0
         direct_flows = self.link_flow_direct
@@ -203,16 +202,16 @@ class UCOptimalSolution:
         #                 )
         #     plt.close()
 
-    def plot_cum_export_flows_at_opt(self):
+    def plot_cum_export_flows(self):
         # TODO: aggreg. plot with sum of exported flow per country (as a function of time)
         bob = 1
 
-    def plot_geo_synthesis_of_flows_at_opt(self):
+    def plot_geo_synthesis_of_flows(self):
         # TODO: cf. other proposition from Copilot for geographic representation
         bob = 1
 
-    def plot_failure_at_opt(self, country: str, year: int, climatic_year: int, start_horizon: datetime,
-                            toy_model_output: bool = False):
+    def plot_failure(self, country: str, year: int, climatic_year: int, start_horizon: datetime,
+                     toy_model_output: bool = False):
         # catch DeprecationWarnings TODO: fix/more robust way to catch them?
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -239,9 +238,9 @@ class UCOptimalSolution:
                         )
             plt.close()
 
-    def save_opt_decisions_to_csv(self, year: int, climatic_year: int, start_horizon: datetime,
-                                  rename_snapshot_col: bool = True, toy_model_output: bool = False,
-                                  country: str = 'europe'):
+    def save_decisions_to_csv(self, year: int, climatic_year: int, start_horizon: datetime,
+                              rename_snapshot_col: bool = True, toy_model_output: bool = False,
+                              country: str = 'europe'):
         # TODO: check if unique country and in this case (i) suppress country prefix in asset names
         # opt prod decisions for all but Storage assets
         opt_p_csv_file = get_opt_power_file(country=country, year=year, climatic_year=climatic_year,

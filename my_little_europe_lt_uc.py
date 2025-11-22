@@ -148,15 +148,14 @@ def save_data_and_fig_results(pypsa_model: PypsaModel, uc_run_params: UCRunParam
 
         # plot - per country - opt prod profiles 'stacked'
         for country in uc_run_params.selected_countries:
-            (uc_optimal_solution.plot_opt_prod_var(plot_params_agg_pt=plot_params_agg_pt, country=country,
-                                                   year=uc_run_params.selected_target_year,
-                                                   climatic_year=uc_run_params.selected_climatic_year,
-                                                   start_horizon=uc_run_params.uc_period_start)
+            (uc_optimal_solution.plot_prod(plot_params_agg_pt=plot_params_agg_pt, country=country,
+                                           year=uc_run_params.selected_target_year,
+                                           climatic_year=uc_run_params.selected_climatic_year,
+                                           start_horizon=uc_run_params.uc_period_start)
              )
-            (uc_optimal_solution.plot_link_flows_at_opt(origin_country=country,
-                                                        year=uc_run_params.selected_target_year,
-                                                        climatic_year=uc_run_params.selected_climatic_year,
-                                                        start_horizon=uc_run_params.uc_period_start)
+            (uc_optimal_solution.plot_link_flows(origin_country=country, year=uc_run_params.selected_target_year,
+                                                 climatic_year=uc_run_params.selected_climatic_year,
+                                                 start_horizon=uc_run_params.uc_period_start)
              )
         # plot 'marginal price' figure
         (uc_optimal_solution.plot_marginal_price(plot_params_zone=plot_params_zone,
@@ -166,9 +165,9 @@ def save_data_and_fig_results(pypsa_model: PypsaModel, uc_run_params: UCRunParam
          )
 
         # save optimal prod. decision to an output file
-        (uc_optimal_solution.save_opt_decisions_to_csv(year=uc_run_params.selected_target_year,
-                                                       climatic_year=uc_run_params.selected_climatic_year,
-                                                       start_horizon=uc_run_params.uc_period_start)
+        (uc_optimal_solution.save_decisions_to_csv(year=uc_run_params.selected_target_year,
+                                                   climatic_year=uc_run_params.selected_climatic_year,
+                                                   start_horizon=uc_run_params.uc_period_start)
          )
 
         # save marginal prices to an output file
