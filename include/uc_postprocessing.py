@@ -33,8 +33,11 @@ def dict_to_str(d: Dict[str, float], nbers_with_spaces: bool = False) -> str:
 OUTPUT_DATE_COL = 'date'
 
 
-def set_col_order_for_plot(df: pd.DataFrame, cols_ordered: List[str]) -> pd.DataFrame:
+def set_col_order_for_plot(df: pd.DataFrame, cols_ordered: List[str], stock_cons_first: bool = True) -> pd.DataFrame:
     current_df_cols = list(df.columns)
+    # put first consumption of storage-like assets -> to get the negative part seen below x-axis
+    current_df_cols_ordered = []
+    # TODO: ok with both prod/cons?
     current_df_cols_ordered = [col for col in cols_ordered if col in current_df_cols]
     df = df[current_df_cols_ordered]
     return df
@@ -179,6 +182,8 @@ class UCOptimalSolution:
             if rm_all_zero_curves:
                 current_prod = sort_out_cols_with_zero_values(df=current_prod, abs_val_threshold=1e-2)
             current_prod.div(1e3).plot.area(subplots=False, ylabel='GW', color=plot_params_agg_pt.per_case_color)
+            # to avoid having the index name in the legend block ('Generator'; not very useful here)
+            plt.legend(title=None)
             plt.tight_layout()
             plt.savefig(get_output_figure(fig_name=FigNamesPrefix.production, country=country, year=year,
                                           climatic_year=climatic_year, start_horizon=start_horizon,
