@@ -12,17 +12,15 @@ import pypsa
 import matplotlib.pyplot as plt
 
 from common.constants.countries import set_country_trigram
+from common.constants.generation_units import get_country_from_unit_name
 from common.constants.optimisation import OptimSolvers, DEFAULT_OPTIM_SOLVER_PARAMS, SolverParams
-from common.constants.pypsa_params import GEN_UNITS_PYPSA_PARAMS, PypsaOptimVarNames
+from common.constants.pypsa_params import GEN_UNITS_PYPSA_PARAMS
 from common.error_msgs import print_errors_list
 from common.fuel_sources import FuelSource
-from common.long_term_uc_io import (get_marginal_prices_file, get_network_figure, get_opt_power_file,
-                                    get_storage_opt_dec_file, get_link_flow_opt_dec_file, get_figure_file_named, 
-                                    FigNamesPrefix, get_output_figure, get_uc_summary_file)
-from common.plot_params import PlotParams
-from include.uc_postprocessing import UCSummaryMetrics
-from utils.basic_utils import lexico_compar_str, rm_elts_with_none_val, rm_elts_in_str, sort_lexicographically, format_with_spaces
-from utils.df_utils import rename_df_columns, sort_out_cols_with_zero_values
+from common.long_term_uc_io import get_network_figure, FigNamesPrefix, get_output_figure, get_uc_summary_file
+from include.uc_postprocessing import UCSummaryMetrics, UCOptimalSolution
+from utils.basic_utils import (lexico_compar_str, rm_elts_with_none_val, rm_elts_in_str, sort_lexicographically,
+                               format_with_spaces)
 from utils.dir_utils import make_dir
 from utils.pypsa_utils import get_network_obj_value
 from utils.serializer import array_serializer
@@ -59,46 +57,14 @@ class GenerationUnitData:
         return unit_data_dict
 
 
-UNIT_NAME_SEP = '_'
-
-
 def select_gen_units_data(gen_units_data: List[GenerationUnitData], countries: List[str], 
                           unit_types: List[str]) -> List[GenerationUnitData]:
-    return [elt for elt in gen_units_data if get_country_from_unit_name(elt.name) in countries and elt.type in unit_types]
-
-
-def get_prod_type_from_unit_name(prod_unit_name: str) -> str:
-    return prod_unit_name.split(UNIT_NAME_SEP)[1]
-
-
-def get_country_from_unit_name(prod_unit_name: str) -> str:
-    return prod_unit_name.split(UNIT_NAME_SEP)[0]
-
-
-def set_gen_unit_name(country: str, agg_prod_type: str) -> str:
-    country_trigram = set_country_trigram(country=country)
-    return f'{country_trigram}{UNIT_NAME_SEP}{agg_prod_type}'
+    return [elt for elt in gen_units_data
+            if get_country_from_unit_name(elt.name) in countries and elt.type in unit_types]
 
 
 GEN_UNITS_DATA_TYPE = Dict[str, List[GenerationUnitData]]
 PYPSA_RESULT_TYPE = Tuple[str, str]
-
-
-def set_col_order_for_plot(df: pd.DataFrame, cols_ordered: List[str]) -> pd.DataFrame:
-    current_df_cols = list(df.columns)
-    current_df_cols_ordered = [col for col in cols_ordered if col in current_df_cols]
-    df = df[current_df_cols_ordered]
-    return df
-
-
-def set_full_coll_for_storage_df(df: pd.DataFrame, col_suffix: str) -> pd.DataFrame:
-    old_cols = list(df.columns)
-    new_cols = {col: f'{col}_{col_suffix}' for col in old_cols}
-    df = rename_df_columns(df=df, old_to_new_cols=new_cols)
-    return df
-
-
-OUTPUT_DATE_COL = 'date'
 
 
 def check_gen_unit_params(params: dict, n_ts: int) -> bool:
@@ -159,13 +125,6 @@ class PypsaModel:
     # TODO: json dump to have an aggreg. view of such a model in saved files (and check stress test effect rapidly)
     name: str
     network: pypsa.Network = None
-    prod_var_opt: pd.DataFrame = None  # prod opt value that will be obtained after optim.
-    sde_dual_var_opt: pd.DataFrame = None  # idem for SDE constraint dual variable
-    storage_prod_var_opt: pd.DataFrame = None  # idem for Storage prod -> prod (turbining)
-    storage_cons_var_opt: pd.DataFrame = None  # idem for Storage prod -> cons (pumping)
-    storage_soc_opt: pd.DataFrame = None  # idem for Storage prod -> SoC (State-of-Charge)
-    link_flow_var_opt_direct: pd.DataFrame = None  # flow in the links at optimum, direct direction
-    link_flow_var_opt_reverse: pd.DataFrame = None  # reverse direction
     uc_summary_metrics: UCSummaryMetrics = None  # UC summary metrics (ENS, nber of failure hours, costs...)
     optim_solver_params: SolverParams = None
     DEFAULT_CARRIER = 'ac'
@@ -405,42 +364,20 @@ class PypsaModel:
                           toy_model_output=toy_model_output, countries=countries)
         return result
 
-    def get_prod_var_opt(self):
-        self.prod_var_opt = self.network.generators_t.p
-
-    def get_prod_var_opt_given_bus(self, bus_name: str) -> Optional[pd.DataFrame]:
-        if self.prod_var_opt is None:
-            logging.warning(f'Optimal variable prod. df cannot be obtained for bus {bus_name}; the prod_var_opt variable needs to be got first')
-            return None
-        prod_unit_prefix = f'{bus_name}_'
-        current_cols = [col for col in self.prod_var_opt.columns if col.startswith(prod_unit_prefix)]
-        return self.prod_var_opt[current_cols]
-
-    def get_storage_vars_opt(self):
-        self.storage_prod_var_opt = self.network.storage_units_t.p_dispatch
-        self.storage_cons_var_opt = self.network.storage_units_t.p_store
-        self.storage_soc_opt = self.network.storage_units_t.state_of_charge
-
-    def get_link_flow_vars_opt(self):
-        # flow to the first bus of the link (origin)
-        self.link_flow_var_opt_direct = self.network.links_t.p0
-        # to the second bus (destination)
-        self.link_flow_var_opt_reverse = self.network.links_t.p1
-
-    def get_sde_dual_var_opt(self):
-        self.sde_dual_var_opt = self.network.buses_t.marginal_price
-
-    def get_link_capa_dual_var_opt(self):
-        logging.warning('Link capa. dual variable code to be fixed (needs to "enter" into Linopy framework - not directly available in PyPSA 0.35.1)')
-        linopy_model = self.network.model
-        # TODO: fix it, going into linopy framework... apparently not possible to directly access this info from PyPSA
-        # see linopy_model.constraints to get a list of considered constraints (Link-fix-p-lower, but cannot be accessed
-        # with link_fix_p_lower)
-        # Issue self.network.model.dual.keys() empty...
-        # loop over links... and build df
-        # con_obj = linopy_model.link_fix_p_upper[link_name]
-        # Retrieve the dual value (shadow price)
-        # dual_value = linopy_model.dual[con_obj]
+    def set_uc_opt_solution(self) -> UCOptimalSolution:
+        """
+        Returns: an object containing variables + methods on the UC optimal solution
+        """
+        # init.
+        uc_opt_solution = UCOptimalSolution(network_name=self.network.name)
+        # get primal optimal values from PyPSA network
+        uc_opt_solution.get_prod_var_opt(network=self.network)
+        uc_opt_solution.get_storage_vars_opt(network=self.network)
+        uc_opt_solution.get_link_flow_vars_opt(network=self.network)
+        # and dual variables - some of them "entering" into Linopy framework
+        uc_opt_solution.get_sde_dual_var_opt(network=self.network)
+        uc_opt_solution.get_link_capa_dual_var_opt(network=self.network)
+        return uc_opt_solution
 
     def get_opt_value(self, pypsa_resol_status: str) -> float:
         objective_value = get_network_obj_value(network=self.network)
@@ -449,69 +386,6 @@ class PypsaModel:
             f'Optimisation resolution status is {pypsa_resol_status} with objective value (cost) = '
             f'{objective_value_refmted} (M€) -> output data (resp. figures) can be generated')
         return objective_value
-
-    def calc_co2_emissions(self, per_country: bool = False) -> Union[float, Dict[str, float]]:
-        if per_country:
-            countries = self.get_bus_names()
-            per_country_co2_emissions = {}
-            for country in countries:
-                current_prod_var_opt = self.get_prod_var_opt_given_bus(bus_name=country)
-                per_country_co2_emissions[country] = float(current_prod_var_opt.multiply(self.network.snapshot_weightings.generators, axis=0).multiply(self.network.generators.carrier.map(self.network.carriers.co2_emissions), axis=1).sum().sum())
-            return per_country_co2_emissions
-        return self.prod_var_opt.multiply(self.network.snapshot_weightings.generators, axis=0).multiply(self.network.generators.carrier.map(self.network.carriers.co2_emissions), axis=1).sum().sum()
-
-    def calc_per_country_total_cost(self, is_operational_cost: bool = False) -> Dict[str, float]:
-        """
-        Calculate per-country (bus) total cost over the considered horizon: sum_t sum_{prod unit i} marginal cost(i) *prod(i,t)
-        :param is_operational_cost: in this case do not integrate failure penalty cost in this calculation
-        """
-        countries = self.get_bus_names()
-        per_country_total_cost = {}
-        for country in countries:
-            current_prod_var_opt = self.get_prod_var_opt_given_bus(bus_name=country)
-            if is_operational_cost:
-                # drop failure column from df TODO: set failure column name from constants (functions)
-                current_prod_var_opt = current_prod_var_opt.drop(f'{country}_failure', axis=1)
-            per_country_total_cost[country] = float(current_prod_var_opt.multiply(self.network.snapshot_weightings.generators, axis=0).multiply(self.network.generators.marginal_cost, axis=1).sum().sum())
-        return per_country_total_cost
-    
-    def set_uc_summary_metrics(self, total_cost: float, failure_penalty: float = None):
-        logging.info('Set UC summary metrics')
-        failure_prod_cols = [col for col in self.prod_var_opt.columns if col.endswith('_failure')]
-        df_failure_opt = self.prod_var_opt[failure_prod_cols]
-        per_country_ens = {key: float(val) for key, val in dict(df_failure_opt.sum()).items()}
-        per_country_n_failure_h = {key: int(val) for key, val in dict((df_failure_opt > 0).sum(axis=0)).items()}
-        # remove '_failure' suffix from two previous dict. keys
-        per_country_ens = {key.split('_')[0]: val for key, val in per_country_ens.items()}
-        per_country_n_failure_h = {key.split('_')[0]: val for key, val in per_country_n_failure_h.items()} 
-        if failure_penalty is not None:
-            eur_failure_volume = sum(per_country_ens.values())
-            eur_total_ope_cost = total_cost - failure_penalty * eur_failure_volume
-        else:
-            eur_total_ope_cost = None
-        # co2 emissions
-        total_co2_emissions = self.calc_co2_emissions()
-        per_country_co2_emissions = self.calc_co2_emissions(per_country=True)
-        per_country_total_cost = self.calc_per_country_total_cost()
-        per_country_total_operational_cost = self.calc_per_country_total_cost(is_operational_cost=True)
-        # attention convert to GWh/M€ and int to get smaller values for synthesis. TODO: check CO2 emissions unit!
-        cost_conversion_factor = 1e-6
-        co2_emis_conversion_factor = 1e-3
-        self.uc_summary_metrics = UCSummaryMetrics(per_country_ens={c: int(val/1e3) for c, val in per_country_ens.items()}, 
-                                                   per_country_n_failure_hours=per_country_n_failure_h,
-                                                   total_cost=int(total_cost * cost_conversion_factor), 
-                                                   total_operational_cost=int(eur_total_ope_cost * cost_conversion_factor),
-                                                   total_co2_emissions=int(total_co2_emissions * co2_emis_conversion_factor),
-                                                   per_country_total_cost={c: int(val * cost_conversion_factor) for c, val in per_country_total_cost.items()},
-                                                   per_country_total_operational_cost={c: int(val * cost_conversion_factor) for c, val in per_country_total_operational_cost.items()},
-                                                   per_country_co2_emissions={c: int(val * co2_emis_conversion_factor) for c, val in per_country_co2_emissions.items()})
-
-    def json_dump_uc_summary_metrics(self, year: int, climatic_year: int, start_horizon: datetime, 
-                                     country: str = 'europe', toy_model_output: bool = False):
-        json_file = get_uc_summary_file(country=country, year=year, 
-                                        climatic_year=climatic_year, start_horizon=start_horizon,
-                                        toy_model_output=toy_model_output)
-        self.uc_summary_metrics.json_dump(file=json_file)
 
     def plot_installed_capas(self, country: str, year: int, toy_model_output: bool = False):
         country_trigram = set_country_trigram(country=country)
@@ -527,164 +401,6 @@ class PypsaModel:
             plt.savefig(get_output_figure(fig_name=FigNamesPrefix.capacity, country=country, year=year,
                                           toy_model_output=toy_model_output))
             plt.close()
-
-    def plot_opt_prod_var(self, plot_params_agg_pt: PlotParams, country: str, year: int,
-                          climatic_year: int, start_horizon: datetime, toy_model_output: bool = False, 
-                          rm_all_zero_curves: bool = True):
-        """ 
-        Plot 'stack' of optimized production profiles
-        """
-        # catch DeprecationWarnings TODO: fix/more robust way to catch them?
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            # sort values to get only prod of given country
-            country_trigram = set_country_trigram(country=country)
-            country_prod_cols = [prod_unit_name for prod_unit_name in list(self.prod_var_opt)
-                                 if prod_unit_name.startswith(country_trigram)]
-            current_prod_var_opt = self.prod_var_opt[country_prod_cols]
-            # suppress trigram from prod unit names to simplify legend in figures
-            new_prod_cols = {col: col[4:] for col in country_prod_cols}
-            current_prod_var_opt = rename_df_columns(df=current_prod_var_opt, old_to_new_cols=new_prod_cols)
-            current_prod_var_opt = set_col_order_for_plot(df=current_prod_var_opt,
-                                                          cols_ordered=plot_params_agg_pt.order)
-            if rm_all_zero_curves:
-                current_prod_var_opt = sort_out_cols_with_zero_values(df=current_prod_var_opt, abs_val_threshold=1e-2)
-            current_prod_var_opt.div(1e3).plot.area(subplots=False, ylabel='GW',
-                                                    color=plot_params_agg_pt.per_case_color)
-            plt.tight_layout()
-            plt.savefig(get_output_figure(fig_name=FigNamesPrefix.production, country=country, year=year,
-                                          climatic_year=climatic_year, start_horizon=start_horizon,
-                                          toy_model_output=toy_model_output))
-            plt.close()
-
-    def plot_link_flows_at_opt(self, origin_country: str, year: int, climatic_year: int, 
-                               start_horizon: datetime, toy_model_output: bool = False):
-        # logging.info('Preliminary code for optimal flow plotting to be adapted/tested to get output figures')
-        # select links with origin_country as p0
-        direct_flows = self.link_flow_var_opt_direct
-        reverse_flows = self.link_flow_var_opt_reverse
-        links_for_plot = []
-        # cf. Copilot piece of code :) -> to be tested/adapted
-        # flow_df = direct_flows.copy()
-        # flow_df.columns = [f"{col} (p0)" for col in flow_df.columns]
-        # for col in reverse_flows.columns:
-        #     flow_df[f"{col} (p1)"] = reverse_flows[col]
-        #     flow_df.reset_index(inplace=True)
-        # # plot -> to be activated after having checked code above
-        # # catch DeprecationWarnings TODO: fix/more robust way to catch them?
-        # with warnings.catch_warnings():
-        #     warnings.simplefilter("ignore")
-        #     self.link_flow_var_opt_direct.div(1e3)[links_for_plot].plot.line(subplots=False, ylabel='GW')
-        #     plt.tight_layout()
-        #     plt.savefig(get_figure_file_named('link_flows', country=origin_country, year=year, climatic_year=climatic_year,
-        #                                       start_horizon=start_horizon, toy_model_output=toy_model_output)
-        #                 )
-        #     plt.close()
-
-    def plot_cum_export_flows_at_opt(self):
-        # TODO: aggreg. plot with sum of exported flow per country (as a function of time)
-        bob = 1
-
-    def plot_geo_synthesis_of_flows_at_opt(self):
-        # TODO: cf. other proposition from Copilot for geographic representation
-        bob = 1
-
-    def plot_failure_at_opt(self, country: str, year: int, climatic_year: int, start_horizon: datetime,
-                            toy_model_output: bool = False):
-        # catch DeprecationWarnings TODO: fix/more robust way to catch them?
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            failure_unit_name = set_gen_unit_name(country=country, agg_prod_type='failure')
-            self.network.generators_t.p.div(1e3)[failure_unit_name].plot.line(subplots=False, ylabel='GW')
-            plt.tight_layout()
-            plt.savefig(get_figure_file_named('failure', country=country, year=year, climatic_year=climatic_year,
-                                              start_horizon=start_horizon, toy_model_output=toy_model_output)
-                        )
-            plt.close()
-
-    def plot_marginal_price(self, plot_params_zone: PlotParams, year: int, climatic_year: int, start_horizon: datetime,
-                            country: str = 'europe', toy_model_output: bool = False):
-        # catch DeprecationWarnings TODO: fix/more robust way to catch them?
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            sde_dual_var_opt_plot = set_col_order_for_plot(df=self.sde_dual_var_opt,
-                                                           cols_ordered=plot_params_zone.order)
-            sde_dual_var_opt_plot.plot.line(figsize=(8, 3), ylabel='Euro per MWh',
-                                            color=plot_params_zone.per_case_color)
-            plt.tight_layout()
-            plt.savefig(get_output_figure(fig_name=FigNamesPrefix.prices, country=country, year=year,
-                                          climatic_year=climatic_year, start_horizon=start_horizon,
-                                          toy_model_output=toy_model_output)
-                        )
-            plt.close()
-
-    def save_opt_decisions_to_csv(self, year: int, climatic_year: int, start_horizon: datetime,
-                                  rename_snapshot_col: bool = True, toy_model_output: bool = False,
-                                  country: str = 'europe'):
-        # TODO: check if unique country and in this case (i) suppress country prefix in asset names
-        # opt prod decisions for all but Storage assets
-        opt_p_csv_file = get_opt_power_file(country=country, year=year, climatic_year=climatic_year,
-                                            start_horizon=start_horizon, toy_model_output=toy_model_output)
-        logging.info(f'Save - all but Storage assets - optimal dispatch decisions to csv file {opt_p_csv_file}')
-        df_prod_opt = self.prod_var_opt
-        if rename_snapshot_col:
-            df_prod_opt.index.name = OUTPUT_DATE_COL
-        # cast to int to avoid useless numeric precisions and associated... issues!
-        df_prod_opt = df_prod_opt.astype(int)
-        df_prod_opt.to_csv(opt_p_csv_file)
-        # then storage assets decisions
-        storage_opt_dec_csv_file = \
-            get_storage_opt_dec_file(country=country, year=year, climatic_year=climatic_year,
-                                     start_horizon=start_horizon, toy_model_output=toy_model_output)
-        logging.info(f'Save Storage optimal decisions to csv file {storage_opt_dec_csv_file}')
-        # join the 3 Storage result dfs
-        df_prod_opt = self.storage_prod_var_opt
-        df_cons_opt = self.storage_cons_var_opt
-        df_soc_opt = self.storage_soc_opt
-        # rename first the different columns -> adding prod/cons/soc suffixes
-        df_prod_opt = set_full_coll_for_storage_df(df=df_prod_opt, col_suffix='prod')
-        df_cons_opt = set_full_coll_for_storage_df(df=df_cons_opt, col_suffix='cons')
-        df_soc_opt = set_full_coll_for_storage_df(df=df_soc_opt, col_suffix='soc')
-        df_storage_all_decs = df_prod_opt.join(df_cons_opt).join(df_soc_opt)
-        if rename_snapshot_col:
-            df_storage_all_decs.index.name = OUTPUT_DATE_COL
-        # cast to int to avoid useless numeric precisions and associated... issues!
-        df_storage_all_decs = df_storage_all_decs.astype(int)
-        df_storage_all_decs.to_csv(storage_opt_dec_csv_file)
-        # and finally link flow decisions
-        link_flow_opt_dec_csv_file = \
-            get_link_flow_opt_dec_file(country=country, year=year, climatic_year=climatic_year,
-                                       start_horizon=start_horizon, toy_model_output=toy_model_output)
-        logging.info(f'Save link flow optimal decisions to csv file {link_flow_opt_dec_csv_file}')
-        df_link_flow_opt_direct = self.link_flow_var_opt_direct
-        df_link_flow_opt_reverse = self.link_flow_var_opt_reverse
-        # add reverse suffix to reverse flows
-        new_cols = []
-        for flow_col in df_link_flow_opt_reverse.columns:
-            flow_col_split = flow_col.split('_')
-            new_cols.append(f'{flow_col_split[0]}-reverse_{flow_col_split[1]}')
-        df_link_flow_opt_reverse.columns = new_cols
-        df_link_flow_opt = pd.concat([df_link_flow_opt_direct, df_link_flow_opt_reverse], axis=1) 
-        if rename_snapshot_col:
-            df_link_flow_opt.index.name = OUTPUT_DATE_COL
-        # cast to int to avoid useless numeric precisions and associated... issues!
-        df_link_flow_opt = df_link_flow_opt.astype(int)        
-        df_link_flow_opt.to_csv(link_flow_opt_dec_csv_file)
-
-    def save_marginal_prices_to_csv(self, year: int, climatic_year: int, start_horizon: datetime,
-                                    rename_snapshot_col: bool = True, toy_model_output: bool = False,
-                                    country: str = 'europe'):
-        logging.info('Save marginal prices decisions to .csv file')
-        marginal_prices_csv_file = get_marginal_prices_file(country=country, year=year,
-                                                            climatic_year=climatic_year,
-                                                            start_horizon=start_horizon,
-                                                            toy_model_output=toy_model_output)
-        df_sde_dual_var_opt = self.sde_dual_var_opt
-        if rename_snapshot_col:
-            df_sde_dual_var_opt.index.name = OUTPUT_DATE_COL
-        # do NOT cast this df, given that price values can be accurate at some decimals 
-        # -> may be useful to observe the correspondence with (input) marginal cost values
-        df_sde_dual_var_opt.to_csv(marginal_prices_csv_file)
 
 
 # def overwrite_gen_units_fuel_src_params(generation_units_data: GEN_UNITS_DATA_TYPE, updated_fuel_sources_params: Dict[

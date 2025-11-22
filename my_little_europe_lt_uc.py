@@ -49,10 +49,11 @@ def get_needed_eraa_data(uc_run_params: UCRunParams, eraa_data_descr: ERAADatase
     logging.info(f'{TITLE_LOG_SEP} II)2) Check data coherence {TITLE_LOG_SEP}')
     logging.info('Get generation units data, from both ERAA data - read just before '
                  '- and complementary JSON parameter files')
-    eraa_dataset.get_generation_units_data(uc_run_params=uc_run_params,
-                                           pypsa_unit_params_per_agg_pt=eraa_data_descr.pypsa_unit_params_per_agg_pt,
-                                           units_complem_params_per_agg_pt=
-                                           eraa_data_descr.units_complem_params_per_agg_pt)
+    (eraa_dataset
+     .get_generation_units_data(uc_run_params=uc_run_params,
+                                pypsa_unit_params_per_agg_pt=eraa_data_descr.pypsa_unit_params_per_agg_pt,
+                                units_complem_params_per_agg_pt=eraa_data_descr.units_complem_params_per_agg_pt)
+     )
 
     # set 'committable' attribute to False, i.e. no 'dynamic constraints' modeled in the considered modeled
     eraa_dataset.set_committable_param_to_false()
@@ -97,7 +98,8 @@ def create_pypsa_network_model(name: str, uc_run_params: UCRunParams, eraa_datas
     with_hydro_custom_const = False  # TODO: set to True/make it a parameter when adding SOC min/max level in model
     if with_hydro_custom_const:
         pypsa_model.build_model_before_adding_custom_const()
-        # get reservoir extreme generation and level values, as well as energy capacities (to see if constraints will be useless)
+        # get reservoir extreme generation and level values, as well as energy capacities
+        # (to see if constraints will be useless)
         hydro_soc_min, hydro_soc_max, hydro_e_capa = eraa_dataset.get_hydro_params_for_extr_levels_const()
         pypsa_model.add_hydro_extreme_levels_constraint(soc_min=hydro_soc_min, soc_max=hydro_soc_max,
                                                         energy_capa=hydro_e_capa)
@@ -131,17 +133,14 @@ def solve_pypsa_network_model(pypsa_model: PypsaModel, year: int, n_countries: i
     return result
 
 
-def save_data_and_fig_results(pypsa_model: PypsaModel, uc_run_params: UCRunParams, result_optim_status: str) -> Optional[UCSummaryMetrics]:
+def save_data_and_fig_results(pypsa_model: PypsaModel, uc_run_params: UCRunParams,
+                              result_optim_status: str) -> Optional[UCSummaryMetrics]:
     pypsa_opt_resol_status = OPTIM_RESOL_STATUS.optimal
     # if optimal resolution status, save output data and plot associated figures
     if result_optim_status == pypsa_opt_resol_status:
         # get objective value, and associated optimal decisions / dual variables
         objective_value = pypsa_model.get_opt_value(pypsa_resol_status=pypsa_opt_resol_status)
-        pypsa_model.get_prod_var_opt()
-        pypsa_model.get_storage_vars_opt()
-        pypsa_model.get_link_flow_vars_opt()
-        pypsa_model.get_sde_dual_var_opt()
-        pypsa_model.get_link_capa_dual_var_opt()
+        uc_optimal_solution = pypsa_model.set_uc_opt_solution()
         # get plot parameters associated to aggreg. production types
         per_dim_plot_params = read_plot_params()
         plot_params_agg_pt = per_dim_plot_params[DataDimensions.agg_prod_type]
@@ -149,37 +148,47 @@ def save_data_and_fig_results(pypsa_model: PypsaModel, uc_run_params: UCRunParam
 
         # plot - per country - opt prod profiles 'stacked'
         for country in uc_run_params.selected_countries:
-            pypsa_model.plot_opt_prod_var(plot_params_agg_pt=plot_params_agg_pt, country=country,
-                                          year=uc_run_params.selected_target_year,
-                                          climatic_year=uc_run_params.selected_climatic_year,
-                                          start_horizon=uc_run_params.uc_period_start)
-            pypsa_model.plot_link_flows_at_opt(origin_country=country, 
-                                               year=uc_run_params.selected_target_year,
-                                               climatic_year=uc_run_params.selected_climatic_year,
-                                               start_horizon=uc_run_params.uc_period_start)
+            (uc_optimal_solution.plot_opt_prod_var(plot_params_agg_pt=plot_params_agg_pt, country=country,
+                                                   year=uc_run_params.selected_target_year,
+                                                   climatic_year=uc_run_params.selected_climatic_year,
+                                                   start_horizon=uc_run_params.uc_period_start)
+             )
+            (uc_optimal_solution.plot_link_flows_at_opt(origin_country=country,
+                                                        year=uc_run_params.selected_target_year,
+                                                        climatic_year=uc_run_params.selected_climatic_year,
+                                                        start_horizon=uc_run_params.uc_period_start)
+             )
         # plot 'marginal price' figure
-        pypsa_model.plot_marginal_price(plot_params_zone=plot_params_zone, year=uc_run_params.selected_target_year,
-                                        climatic_year=uc_run_params.selected_climatic_year,
-                                        start_horizon=uc_run_params.uc_period_start)
+        (uc_optimal_solution.plot_marginal_price(plot_params_zone=plot_params_zone,
+                                                 year=uc_run_params.selected_target_year,
+                                                 climatic_year=uc_run_params.selected_climatic_year,
+                                                 start_horizon=uc_run_params.uc_period_start)
+         )
 
         # save optimal prod. decision to an output file
-        pypsa_model.save_opt_decisions_to_csv(year=uc_run_params.selected_target_year,
-                                              climatic_year=uc_run_params.selected_climatic_year,
-                                              start_horizon=uc_run_params.uc_period_start)
+        (uc_optimal_solution.save_opt_decisions_to_csv(year=uc_run_params.selected_target_year,
+                                                       climatic_year=uc_run_params.selected_climatic_year,
+                                                       start_horizon=uc_run_params.uc_period_start)
+         )
 
         # save marginal prices to an output file
-        pypsa_model.save_marginal_prices_to_csv(year=uc_run_params.selected_target_year,
-                                                climatic_year=uc_run_params.selected_climatic_year,
-                                                start_horizon=uc_run_params.uc_period_start)
+        (uc_optimal_solution.save_marginal_prices_to_csv(year=uc_run_params.selected_target_year,
+                                                         climatic_year=uc_run_params.selected_climatic_year,
+                                                         start_horizon=uc_run_params.uc_period_start)
+         )
         # set UC summary metrics (Energy Not Served, number of failure hours, costs)
-        pypsa_model.set_uc_summary_metrics(total_cost=objective_value, failure_penalty=uc_run_params.failure_penalty)
-        pypsa_model.json_dump_uc_summary_metrics(year=uc_run_params.selected_target_year,
-                                                climatic_year=uc_run_params.selected_climatic_year,
-                                                start_horizon=uc_run_params.uc_period_start)
-        return pypsa_model.uc_summary_metrics
+        uc_summary_metrics = (
+            uc_optimal_solution.set_uc_summary_metrics(network=pypsa_model.network, total_cost=objective_value,
+                                                       failure_penalty=uc_run_params.failure_penalty)
+        )
+        uc_summary_metrics.json_dump(year=uc_run_params.selected_target_year,
+                                     climatic_year=uc_run_params.selected_climatic_year,
+                                     start_horizon=uc_run_params.uc_period_start)
+        return uc_summary_metrics
     else:
         logging.info(f'Optimisation resolution status is not {pypsa_opt_resol_status} '
-                     f'-> output data (resp. figures) cannot be saved (resp. plotted), and None UCSummaryMetrics returned')
+                     f'-> output data (resp. figures) cannot be saved (resp. plotted), '
+                     f'and None UCSummaryMetrics returned')
         return None
 
 
@@ -255,7 +264,8 @@ def run(network_name: str = 'my little europe', solver_params: SolverParams = No
                                        n_countries=len(uc_run_params.selected_countries),
                                        uc_period_start=uc_run_params.uc_period_start, solver_params=solver_params)
 
-    uc_summary_metrics = save_data_and_fig_results(pypsa_model=pypsa_model, uc_run_params=uc_run_params, result_optim_status=result[1])
+    uc_summary_metrics = save_data_and_fig_results(pypsa_model=pypsa_model, uc_run_params=uc_run_params,
+                                                   result_optim_status=result[1])
 
     run_end = time.time()
 

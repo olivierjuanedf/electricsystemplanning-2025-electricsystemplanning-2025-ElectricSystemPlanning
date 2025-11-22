@@ -9,8 +9,10 @@ import pandas as pd
 from datetime import datetime, timedelta
 
 from common.constants.aggreg_operations import AggregOpeNames
+from common.constants.countries import set_country_trigram
 from common.constants.datatypes import DATATYPE_NAMES
 from common.constants.eraa_data import ERAAParamNames
+from common.constants.generation_units import set_gen_unit_name
 from common.constants.prod_types import ProdTypeNames
 from common.constants.pypsa_params import GEN_UNITS_PYPSA_PARAMS, GenUnitsCustomParams
 from common.error_msgs import print_errors_list
@@ -18,7 +20,7 @@ from common.long_term_uc_io import COLUMN_NAMES, DT_FILE_PREFIX, DT_SUBFOLDERS, 
     GEN_CAPA_SUBDT_COLS, INPUT_CY_STRESS_TEST_SUBFOLDER, INPUT_ERAA_FOLDER, HYDRO_KEY_COLUMNS, \
     HYDRO_VALUE_COLUMNS, HYDRO_TS_GRANULARITY, HYDRO_DATA_RESAMPLE_METHODS, HYDRO_LEVELS_RESAMPLE_FILLNA_VALS
 from common.uc_run_params import UCRunParams
-from include.dataset_builder import GenerationUnitData, set_gen_unit_name, select_gen_units_data, set_country_trigram
+from include.dataset_builder import GenerationUnitData, select_gen_units_data
 from utils.basic_utils import get_intersection_of_lists
 from utils.df_utils import create_dict_from_cols_in_df, selec_in_df_based_on_list, set_aggreg_col_based_on_corresp, \
     create_dict_from_df_row, resample_and_distribute
@@ -186,7 +188,8 @@ def get_hydro_data(hydro_dt: str, folder: str, countries: List[str], climatic_ye
     # resample and distribute to hourly values
     # end date to resample -> to include the 23h of last date in data (under convention that period end is EXCLUDED)
     min_date_data = min(df_hydro_data[date_col])
-    # in case of weekly data if period_start is not a Monday it can be strictly before min date in data -> would lead to missing data
+    # in case of weekly data if period_start is not a Monday it can be strictly before min date in data
+    # -> would lead to missing data
     start_date_resample = min(period_start, min_date_data)
     end_date_resample = period_end - timedelta(hours=1)
     value_cols = HYDRO_VALUE_COLUMNS[hydro_dt]
@@ -220,6 +223,7 @@ def separate_hydro_extr_levels_data(hydro_extr_levels_data: Dict[str, pd.DataFra
     From {country: df containing both min and max levels data} to two separate dictionaries
     Args:
         hydro_extr_levels_data:
+        rename_value_col:
 
     Returns: {country: df with min level data}, {country: df with max level data}
     """
@@ -240,8 +244,8 @@ def separate_hydro_extr_levels_data(hydro_extr_levels_data: Dict[str, pd.DataFra
             df_min_level[climatic_year_col] = df_min_level[climatic_year_col].astype(int)
             df_max_level[climatic_year_col] = df_max_level[climatic_year_col].astype(int)
             if rename_value_col:
-                df_min_level.rename(columns={COLUMN_NAMES.min_value: COLUMN_NAMES.value}, inplace=True)
-                df_max_level.rename(columns={COLUMN_NAMES.max_value: COLUMN_NAMES.value}, inplace=True)
+                df_min_level = df_min_level.rename(columns={COLUMN_NAMES.min_value: COLUMN_NAMES.value})
+                df_max_level = df_max_level.rename(columns={COLUMN_NAMES.max_value: COLUMN_NAMES.value})
             hydro_min_level_data[country] = df_min_level
             hydro_max_level_data[country] = df_max_level
     return hydro_min_level_data, hydro_max_level_data
@@ -676,7 +680,7 @@ class Dataset:
                             current_inflows_data = np.array(current_pt_inflow_data[inflow_value_col])
                         except:
                             logging.warning(f'Issue to access inflows data for {country} and {agg_pt} -> set to 0')
-                            current_inflows_data = 0  # Q: ok to set constant float and not a vector for this PyPSA attr.?
+                            current_inflows_data = 0  # Q: ok to set constant float and not vector for this PyPSA attr.?
                         current_assets_data[agg_pt][GEN_UNITS_PYPSA_PARAMS.inflow] = current_inflows_data
                     # add soc extreme levels when it applies
                     if check_if_from_eraa_data(param_key=soc_level_extr_key, 
@@ -687,7 +691,7 @@ class Dataset:
                             current_soc_level_min_data = np.array(current_pt_soc_level_min_data[COLUMN_NAMES.value])
                         except:
                             logging.warning(f'Issue to access SOC level min data for {country} and {agg_pt} -> set to 0')
-                            current_soc_level_min_data = 0  # Q: ok to set constant float and not a vector for this PyPSA attr.?
+                            current_soc_level_min_data = 0  # Q: ok to set constant float and not vector for this PyPSA attr.?
                         current_pt_soc_level_max_data = self.hydro_reservoir_levels_max_data[country]
                         try:
                             current_soc_level_max_data = np.array(current_pt_soc_level_max_data[COLUMN_NAMES.value])
