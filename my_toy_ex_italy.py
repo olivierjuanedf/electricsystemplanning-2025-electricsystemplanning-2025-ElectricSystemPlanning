@@ -268,6 +268,9 @@ result = pypsa_model.optimize_network(year=uc_run_params.selected_target_year, n
                                       period_start=uc_run_params.uc_period_start, save_lp_file=True,
                                       toy_model_output=True, countries=[country])
 print(f'PyPSA result: {result}')  # Check 2nd component of result, the resolution status (optimal?)
+# Get optim. pb size info. (to check if coherent with resolution time?!)
+optim_pb_characts = pypsa_model.get_optim_pb_characteristics()
+print(f'Corresp. to solved {str(optim_pb_characts)}')
 
 """
   VI) Analyse/plot obtained UC solution (production of the different units?)
@@ -282,7 +285,8 @@ pypsa_opt_resol_status = OPTIM_RESOL_STATUS.optimal
 # (V1.2) If optimal resolution status, save output data and plot associated figures
 if optim_status == pypsa_opt_resol_status:
     objective_value = pypsa_model.get_opt_value(pypsa_resol_status=pypsa_opt_resol_status)
-    print(f'Total cost at optimum: {objective_value:.2f}')  # Q: unit?
+    from utils.basic_utils import format_with_spaces
+    print(f'Total cost at optimum: {format_with_spaces(number=int(objective_value/1e6))} M€')
     # Look at the following method - decomposed per variable - if you want to see how to access optimal decisions
     # in PyPSA framework
     uc_optimal_solution = pypsa_model.set_uc_opt_solution()

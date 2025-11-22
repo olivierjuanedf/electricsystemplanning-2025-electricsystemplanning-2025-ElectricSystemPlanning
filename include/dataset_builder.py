@@ -3,6 +3,8 @@ import warnings
 from itertools import product
 from pathlib import Path
 from datetime import datetime
+
+import linopy.model
 import pandas as pd
 import numpy as np
 import logging
@@ -12,7 +14,8 @@ import pypsa
 import matplotlib.pyplot as plt
 
 from common.constants.countries import set_country_trigram
-from common.constants.optimisation import OptimSolvers, DEFAULT_OPTIM_SOLVER_PARAMS, SolverParams
+from common.constants.optimisation import OptimSolvers, DEFAULT_OPTIM_SOLVER_PARAMS, SolverParams, \
+    OptimPbCharacteristics, OptimPbTypes
 from common.constants.prod_types import get_country_from_unit_name
 from common.constants.pypsa_params import GEN_UNITS_PYPSA_PARAMS
 from common.error_msgs import print_errors_list
@@ -118,6 +121,21 @@ def set_per_origin_bus_links_msg(link_names: List[str]) -> str:
         links_msg += f'\n- from {origin}: {[tuple(elt_link.split(link_sep)) for elt_link in common_origin_links]}'
         i_link += j
     return links_msg
+
+
+def set_optim_pb_type(model: linopy.model.Model) -> Optional[str]:
+    if model.is_linear:
+        if len(model.integers) > 0:
+            return OptimPbTypes.milp
+        else:
+            return OptimPbTypes.lp
+    # quadratic if not linear (or other possibilities?)
+    if model.is_quadratic:
+        if len(model.integers) > 0:
+            return OptimPbTypes.miqp
+        else:
+            return OptimPbTypes.qp
+    return None
 
 
 @dataclass
@@ -350,6 +368,18 @@ class PypsaModel:
                         self.set_default_optim_solver(warning_msg=warning_msg)
                     else:
                         os.environ[f'{self.optim_solver_params.name.upper()}_LICENSE_FILE'] = solver_license_file
+
+    def get_optim_pb_characteristics(self) -> OptimPbCharacteristics:
+        """
+        N.B. (i) This method can be called only after having optimized network in PyPSA 0.35.1 (model attribute of network
+        not init before that)
+        (ii) network.model.constraints contains per type of constraint info (dimensions and size)
+        """
+        linopy_model = self.network.model
+        return OptimPbCharacteristics(type=set_optim_pb_type(model=linopy_model),
+                                      n_variables=len(linopy_model.variables.flat),
+                                      n_int_variables=len(linopy_model.integers),
+                                      n_constraints=len(linopy_model.constraints.flat))
 
     def optimize_network(self, year: int, n_countries: int, period_start: datetime, save_lp_file: bool = True,
                          toy_model_output: bool = False, countries: List[str] = None) -> PYPSA_RESULT_TYPE:

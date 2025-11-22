@@ -38,6 +38,7 @@ on the product of data needs -> more than needed in general)
 DA5) Allow capacity plot/extract - over multiple years and dts?
 DA6) Take into account fatal prod (ror) for net demand case
 DA7) Replace [-2] by an adaptive index to refer to extra-params idx at some stages
+DA8) Allow case (extract, load duration curve) - currently only possible to plot it
 
 TOY EX (T) - my_toy_ex_italy.py
 T5) Fullfill long_term_uc/toy_model_params/ex_italy-complem_parameters.py with complem exs in Ita case (hydro, batteries)
@@ -84,6 +85,8 @@ P4) plot tot export per country (on a unique graph)
 P5) Fix pb with plots -> some curves missing (RES) due to plot_params sep ('-' io '_'?)
 -> put also an option to add stock contribution (dispatch and store) in this stacked figure
 (include\dataset_builder.py\def plot_opt_prod_var)
+P6) Set default color in \input\functional_params\plot_params.json if 1 curve only (a group observed that it was - randomly? - 
+set to yellow in this case... not very visible!) 
 
 OTHERS
 O1) Doc basic use of codespace out of the repot?
