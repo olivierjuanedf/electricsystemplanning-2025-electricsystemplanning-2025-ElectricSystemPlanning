@@ -6,11 +6,12 @@ from common.constants.datatypes import DATATYPE_NAMES
 from common.constants.usage_params_json import EnvPhaseNames
 from common.logger import init_logger, stop_logger
 from common.long_term_uc_io import OUTPUT_DATA_ANALYSIS_FOLDER
+from common.plot_params import PlotParamsKeysInJson
 from include.dataset import Dataset
 from utils.basic_utils import print_non_default
 from utils.dates import get_period_str
 from utils.read import read_and_check_data_analysis_params, read_and_check_uc_run_params, \
-    read_given_phase_plot_params, read_plot_params, read_usage_params
+    read_given_phase_specific_key_from_plot_params, read_plot_params, read_usage_params
 
 phase_name = EnvPhaseNames.data_analysis
 
@@ -25,7 +26,7 @@ eraa_data_descr, uc_run_params = read_and_check_uc_run_params(phase_name=phase_n
 
 # set params and figure style for plots
 per_dim_plot_params = read_plot_params()
-fig_style = read_given_phase_plot_params(phase_name=phase_name)
+fig_style = read_given_phase_specific_key_from_plot_params(phase_name=phase_name, param_to_be_set=PlotParamsKeysInJson.fig_style)
 print_non_default(obj=fig_style, obj_name=f'FigureStyle - for phase {phase_name}', log_level='debug')
 
 # read and check data analyses params

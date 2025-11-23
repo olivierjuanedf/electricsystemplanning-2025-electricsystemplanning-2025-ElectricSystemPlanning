@@ -36,14 +36,16 @@ def get_eraa_data_description() -> ERAADatasetDescr:
 
 # Function to get a few parameters for plot -> only style, in particular to set fixed colors
 # per (aggreg.) production type/country
-from common.plot_params import PlotParams
+from common.plot_params import PlotParams, PlotParamsKeysInJson
 
 
 def get_plots_params() -> (PlotParams, PlotParams):
     from utils.read import read_plot_params
     per_dim_plot_params = read_plot_params()
-    from utils.read import read_given_phase_plot_params
-    fig_style = read_given_phase_plot_params(phase_name=phase_name)
+    from utils.read import read_given_phase_specific_key_from_plot_params
+    fig_style = (
+        read_given_phase_specific_key_from_plot_params(phase_name=phase_name, param_to_be_set=PlotParamsKeysInJson.fig_style)
+    )
     from utils.basic_utils import print_non_default
     print_non_default(obj=fig_style, obj_name=f'FigureStyle - for phase {phase_name}', log_level='debug')
     return per_dim_plot_params[DataDimensions.agg_prod_type], per_dim_plot_params[DataDimensions.zone]

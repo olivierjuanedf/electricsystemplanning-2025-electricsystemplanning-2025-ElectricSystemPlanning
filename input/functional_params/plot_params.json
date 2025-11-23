@@ -250,5 +250,12 @@
       "year",
       "climatic_year"
     ]
-  }
+  },
+  "plots_tb_done_data_analysis": null,
+  "plots_tb_done_monozone_toy_uc_model": null,
+  "plots_tb_done_multizones_uc_model": [
+    "prod_stacked",
+    "prod_stacked_with_stock",
+    "marginal_price"
+  ]
 }

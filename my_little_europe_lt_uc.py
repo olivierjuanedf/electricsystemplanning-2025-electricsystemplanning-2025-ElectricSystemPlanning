@@ -9,10 +9,12 @@ from datetime import datetime
 from common.constants.datadims import DataDimensions
 from common.constants.extract_eraa_data import ERAADatasetDescr
 from common.constants.optimisation import OPTIM_RESOL_STATUS, DEFAULT_OPTIM_SOLVER_PARAMS, SolverParams
+from common.constants.plots import PlotNames
 from common.constants.usage_params_json import EnvPhaseNames
 from common.fuel_sources import set_fuel_sources_from_json, DUMMY_FUEL_SOURCES, FuelSource
 from common.logger import init_logger, stop_logger, deactivate_verbose_warnings, TITLE_LOG_SEP
 from common.long_term_uc_io import set_full_lt_uc_output_folder
+from common.plot_params import PlotParamsKeysInJson
 from common.uc_run_params import UCRunParams
 from include.dataset import Dataset
 from include.dataset_builder import PypsaModel
@@ -20,7 +22,8 @@ from include.uc_postprocessing import UCSummaryMetrics
 from include_runner.overwrite_uc_run_params import apply_fixed_uc_run_params
 from utils.basic_utils import print_non_default
 from utils.dates import get_period_str
-from utils.read import (read_and_check_uc_run_params, read_and_check_pypsa_static_params, read_given_phase_plot_params,
+from utils.read import (read_and_check_uc_run_params, read_and_check_pypsa_static_params,
+                        read_given_phase_specific_key_from_plot_params,
                         read_plot_params, read_usage_params, read_solver_params)
 
 
@@ -108,7 +111,10 @@ def create_pypsa_network_model(name: str, uc_run_params: UCRunParams, eraa_datas
     # name of current "phase" (of the course), the one associated to this script:
     # a multi-zone (Eur.) Unit Commitment model
     phase_name = EnvPhaseNames.multizones_uc_model
-    fig_style = read_given_phase_plot_params(phase_name=phase_name)
+    fig_style = (
+        read_given_phase_specific_key_from_plot_params(phase_name=phase_name,
+                                                       param_to_be_set=PlotParamsKeysInJson.fig_style)
+    )
     print_non_default(obj=fig_style, obj_name=f'FigureStyle - for phase {phase_name}', log_level='debug')
     pypsa_model.plot_network(toy_model_output=False)
     return pypsa_model
@@ -146,32 +152,43 @@ def save_data_and_fig_results(pypsa_model: PypsaModel, uc_run_params: UCRunParam
         uc_optimal_solution = pypsa_model.set_uc_opt_solution()
         # get plot parameters associated to aggreg. production types
         per_dim_plot_params = read_plot_params()
+        plots_tb_done = (
+            read_given_phase_specific_key_from_plot_params(phase_name=EnvPhaseNames.multizones_uc_model,
+                                                           param_to_be_set=PlotParamsKeysInJson.plots_tb_done)
+        )
         plot_params_agg_pt = per_dim_plot_params[DataDimensions.agg_prod_type]
         plot_params_zone = per_dim_plot_params[DataDimensions.zone]
 
-        # plot - per country - opt prod profiles 'stacked'
+        # plot - first the ones per country
         for country in uc_run_params.selected_countries:
-            (uc_optimal_solution.plot_prod(plot_params_agg_pt=plot_params_agg_pt, country=country,
-                                           year=uc_run_params.selected_target_year,
-                                           climatic_year=uc_run_params.selected_climatic_year,
-                                           start_horizon=uc_run_params.uc_period_start)
-             )
+            # opt. prod profiles 'stacked'
+            if PlotNames.prod_stacked in plots_tb_done:
+                (uc_optimal_solution.plot_prod(plot_params_agg_pt=plot_params_agg_pt, country=country,
+                                               year=uc_run_params.selected_target_year,
+                                               climatic_year=uc_run_params.selected_climatic_year,
+                                               start_horizon=uc_run_params.uc_period_start)
+                 )
             # idem, including stock-like prod units (both cons. and prod.) on the stack of curves
-            uc_optimal_solution.plot_prod(plot_params_agg_pt=plot_params_agg_pt, country=country,
-                                          year=uc_run_params.selected_target_year,
-                                          climatic_year=uc_run_params.selected_climatic_year,
-                                          start_horizon=uc_run_params.uc_period_start,
-                                          include_storage=True)
-            (uc_optimal_solution.plot_link_flows(origin_country=country, year=uc_run_params.selected_target_year,
-                                                 climatic_year=uc_run_params.selected_climatic_year,
-                                                 start_horizon=uc_run_params.uc_period_start)
+            if PlotNames.prod_stacked_with_stock in plots_tb_done:
+                uc_optimal_solution.plot_prod(plot_params_agg_pt=plot_params_agg_pt, country=country,
+                                              year=uc_run_params.selected_target_year,
+                                              climatic_year=uc_run_params.selected_climatic_year,
+                                              start_horizon=uc_run_params.uc_period_start,
+                                              include_storage=True)
+            # flow in the links
+            if PlotNames.link_flows in plots_tb_done:
+                (uc_optimal_solution.plot_link_flows(origin_country=country, year=uc_run_params.selected_target_year,
+                                                     climatic_year=uc_run_params.selected_climatic_year,
+                                                     start_horizon=uc_run_params.uc_period_start)
+                 )
+        # then plots at the scale of all countries (Europe)
+        # 'marginal price' figure
+        if PlotNames.marginal_price in plots_tb_done:
+            (uc_optimal_solution.plot_marginal_price(plot_params_zone=plot_params_zone,
+                                                     year=uc_run_params.selected_target_year,
+                                                     climatic_year=uc_run_params.selected_climatic_year,
+                                                     start_horizon=uc_run_params.uc_period_start)
              )
-        # plot 'marginal price' figure
-        (uc_optimal_solution.plot_marginal_price(plot_params_zone=plot_params_zone,
-                                                 year=uc_run_params.selected_target_year,
-                                                 climatic_year=uc_run_params.selected_climatic_year,
-                                                 start_horizon=uc_run_params.uc_period_start)
-         )
 
         # save optimal prod. decision to an output file
         (uc_optimal_solution.save_decisions_to_csv(year=uc_run_params.selected_target_year,

@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union, Dict
 import numpy as np
 import math
 from dataclasses import fields, MISSING
