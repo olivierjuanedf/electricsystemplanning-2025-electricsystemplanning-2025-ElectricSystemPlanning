@@ -15,20 +15,8 @@ from common.constants.prod_types import STOCK_LIKE_PROD_TYPES, ProdTypeNames, ad
 from common.long_term_uc_io import FigNamesPrefix, get_output_figure, get_figure_file_named, get_opt_power_file, \
     get_storage_opt_dec_file, get_marginal_prices_file, get_link_flow_opt_dec_file, get_uc_summary_file
 from common.plot_params import PlotParams
-from utils.basic_utils import format_with_spaces, get_default_values
+from utils.basic_utils import format_with_spaces, get_default_values, dict_to_str
 from utils.df_utils import rename_df_columns, sort_out_cols_with_zero_values
-
-
-def dict_to_str(d: Dict[str, float], nbers_with_spaces: bool = False) -> str:
-    """
-    Nice printing of dictionary into logs
-    """
-    str_sep = ', '
-    if nbers_with_spaces:
-        key_val_lst = [f'{key}: {format_with_spaces(number=val)}' for key, val in d.items()]
-    else:
-        key_val_lst = [f'{key}: {val}' for key, val in d.items()]
-    return str_sep.join(key_val_lst)
 
 
 OUTPUT_DATE_COL = 'date'
@@ -169,15 +157,16 @@ class UCSummaryMetrics:
             json.dump(summary_dict, f)
 
 
-def add_storage_decisions_to_prod_for_plot(country_trigram: str, generator_prod: pd.DataFrame,
-                                           storage_prod: pd.DataFrame, storage_cons: pd.DataFrame):
+def add_storage_decisions_to_prod_df(country_trigram: str, generator_prod: pd.DataFrame, storage_prod: pd.DataFrame,
+                                     storage_cons: pd.DataFrame, cast_cons_as_prod: bool = False) -> pd.DataFrame:
     prod_cols = list(generator_prod.columns)
     storage_prod_cols = [unit_name for unit_name in list(storage_prod) if unit_name.startswith(country_trigram)]
     prod_cols.extend(storage_prod_cols)
     current_storage_prod = storage_prod[storage_prod_cols]
     current_storage_cons = storage_cons[storage_prod_cols]
-    # Key step; switch to prod. convention for consumption!
-    current_storage_cons *= -1
+    # Key step; switch to prod. convention for consumption? Necessary for stack prod. plot for ex.
+    if cast_cons_as_prod:
+        current_storage_cons *= -1
     # add suffix to prod/cons columns to distinguish them after concatenation below
     new_prod_cols = {col: add_suffix_to_storage_unit_col(col=get_prod_type_from_unit_name(prod_unit_name=col),
                                                          col_type='prod') for col in storage_prod_cols}
@@ -250,9 +239,9 @@ class UCOptimalSolution:
             current_prod = rename_df_columns(df=current_prod, old_to_new_cols=new_prod_cols)
             # include storage prod and cons. data in this plot
             if include_storage:
-                current_prod = add_storage_decisions_to_prod_for_plot(
-                    country_trigram=country_trigram, generator_prod=current_prod,
-                    storage_prod=self.storage_prod, storage_cons=self.storage_cons)
+                current_prod = add_storage_decisions_to_prod_df(
+                    country_trigram=country_trigram, generator_prod=current_prod, storage_prod=self.storage_prod,
+                    storage_cons=self.storage_cons, cast_cons_as_prod=True)
                 # add identical colors for the prod type with prod/cons suffix added in df for plot
                 plot_params_agg_pt.add_colors_for_stock_with_suffix()
             current_prod = set_col_order_for_plot(df=current_prod, cols_ordered=plot_params_agg_pt.order,
