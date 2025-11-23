@@ -27,8 +27,7 @@ M16) Select only data of considered cys when reading data in dataset.py\get_coun
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 DATA (D)
-D0) 1900 fictive calendar supposing to start a Monday? If not the case change the chosen fictive year to another one 
-for which it holds?
+D0) 1900 fictive calendar supposing to start a Monday (the case in reality; check of in ERAA data)?
 -> to be specified in data\ERAA_2023-2\data_description.txt
 D0bis) Unit of hydro data? Scale accordingly when reading
 -> to be specified in same file
