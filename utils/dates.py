@@ -1,6 +1,8 @@
 import logging
+from calendar import calendar
 from datetime import datetime, date, timedelta
 from typing import List, Optional, Union
+from math import ceil
 
 from common.constants.temporal import DAY_OF_WEEK
 from common.long_term_uc_io import DATE_FORMAT_PRINT
@@ -132,3 +134,28 @@ def set_date_from_year_and_iso_idx(year: int, week_idx: int, day_idx: int = 1, t
 
 def set_date_from_year_and_day_idx(year: int, day_idx: int) -> datetime:
     return datetime(year, 1, 1) + timedelta(days=day_idx - 1)
+
+
+def get_n_days_in_period(start: datetime, end: datetime) -> int:
+    """
+    Number of days in period, both start and end being included in it
+    """
+    return (end - start).days + 1
+
+
+def get_n_weeks_in_period(start: datetime, end: datetime) -> int:
+    """
+    Number of weeks in period, both start and end being included in it
+    """
+    return ceil((end - start).days / 7)
+
+
+def get_n_months_in_period(start: datetime, end: datetime) -> int:
+    """
+    Number of months in period, both start and end being included in it
+    """
+    return end.month - start.month + 1
+
+
+def get_n_days_in_month(year: int, month: int) -> int:
+    return calendar.monthrange(year, month)[1]
