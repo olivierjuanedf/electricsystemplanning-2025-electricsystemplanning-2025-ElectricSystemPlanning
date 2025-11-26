@@ -11,13 +11,15 @@ from common.long_term_uc_io import get_json_usage_params_file, get_json_fixed_pa
     check_uc_input_folder_content
 from common.constants.extract_eraa_data import ERAADatasetDescr, \
     PypsaStaticParams, UsageParameters
-from common.constants.uc_json_inputs import CountryJsonParamNames, EuropeJsonParamNames, ALL_KEYWORD
+from common.constants.uc_json_inputs import CountryJsonParamNames, EuropeJsonParamNames, ALL_KEYWORD, \
+    EUR_JSON_PARAM_TYPES_FOR_CHECK
 from common.constants.usage_params_json import USAGE_PARAMS_SHORT_NAMES, EnvPhaseNames
 from common.uc_run_params import UCRunParams
 from include.dataset_analyzer import DataAnalysis
 from common.plot_params import PlotParams, DEFAULT_PLOT_DIMS_ORDER, PlotParamsKeysInJson, FigureStyle
 from utils.basic_utils import get_default_values
 from utils.dir_utils import check_file_existence
+from utils.type_checker import apply_params_type_check
 
 
 def check_and_load_json_file(json_file: str, file_descr: str = None) -> dict:
@@ -169,6 +171,21 @@ def read_usage_params() -> UsageParameters:
     return set_usage_params(json_usage_params_data=set_json_usage_params_data())
 
 
+def check_and_process_eur_json_tb_modified(json_data: dict):
+    json_file = get_json_params_tb_modif_file()
+    # first check that keys are coherent
+    json_data_keys = list(json_data)
+    known_keys = get_default_values(obj=EuropeJsonParamNames)
+    unknwon_keys = list(set(json_data_keys) - set(known_keys))
+    if len(unknwon_keys) > 0:
+        logging.warning(f'Unknown keys in {json_file}: {unknwon_keys} (must be in {known_keys})'
+                        f'\n-> will not be taken into account here')
+        json_data = {key: val for key, val in json_data.items() if key in known_keys}
+    apply_params_type_check(json_data, types_for_check=EUR_JSON_PARAM_TYPES_FOR_CHECK,
+                            param_name=f'European params to be modif. (from JSON file {json_file})')
+    return json_data
+
+
 def read_and_check_uc_run_params(phase_name: str, usage_params: UsageParameters,
                                  get_only_eraa_data_descr: bool = False) \
         -> tuple[ERAADatasetDescr, Optional[UCRunParams]]:
@@ -198,6 +215,8 @@ def read_and_check_uc_run_params(phase_name: str, usage_params: UsageParameters,
     countries_data, json_params_tb_modif = None, None
     if not get_only_eraa_data_descr:
         json_params_tb_modif = set_json_params_tb_modif()
+        # check values in JSON params to be modif
+        json_params_tb_modif = check_and_process_eur_json_tb_modified(json_data=json_params_tb_modif)
         countries_data, json_params_tb_modif = (
             set_countries_data(usage_params=usage_params, phase_name=phase_name,
                                available_countries=eraa_data_descr.available_countries,
@@ -271,7 +290,8 @@ def read_solver_params() -> SolverParams:
     return SolverParams(**solver_params_data)
 
 
-def read_given_phase_specific_key_from_plot_params(phase_name: str, param_to_be_set: str) -> Union[FigureStyle, List[str]]:
+def read_given_phase_specific_key_from_plot_params(phase_name: str, param_to_be_set: str) -> Union[
+    FigureStyle, List[str]]:
     """
     Read given phase specific parameters from plot_params.json file
     Args:
