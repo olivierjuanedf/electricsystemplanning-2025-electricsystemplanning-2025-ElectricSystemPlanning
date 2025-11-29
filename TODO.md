@@ -15,15 +15,19 @@ M4) Check marginal cost/efficiency values in elec-europe_params_fixed.json
 M5) See "TODO[debug]"
 M6) [CR] Voir "TODO[CR]"
 M7) Prévoir appui (doc/mini-script ?) pour aider les étudiants à gérer les infaisabilités ? (bcp au début... surtout si on leur fait passer les embûches pédagos - ne pas mettre d'actif défaillance par ex !)
-M9) Tester avec des dates start/end sans hh:mm
-M10) Sortir/tracer les émissions CO2
+M8) Tester avec des dates start/end sans hh:mm
+-> déjà géré ? (normalement)
+M9) Sortir/tracer les émissions CO2
 M11) Vérif cohérence FuelNames avec ProdTypeNames -> utilité des 2 ?
+-> supprimer redondance pour éviter confusions...
 M12) Virer les gitignore qui traînent...
 M13) Trier/simplifier JSON visibles des élèves -> pour que cela soit facile pour eux de rentrer dedans (ne leur laisser voir que les params utilisateurs). Et adapter doc en fonction
 M14) Introduce aggreg. META prod types -> "all_res". To avoid typing lists of all RES types for selection...
 M15) Reformat data files description with file objects (folder, separators, column names...)
 M16) Select only data of considered cys when reading data in dataset.py\get_countries_data (and other filtering...)
 -> seems not TB done for all dts
+M17) Test Jules from Google to rapidly reformat/add tests to this code project?
+-> https://jules.google/
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 DATA (D)
@@ -43,11 +47,11 @@ DA1) Add datatype=production in possible values (for agg. prod types for which i
 DA2) Debug case net_demand with multiple CYs
 DA3) (improve code quality) Avoid creating Dataset object once per data analysis - getting once all data needed (however it should be done
 on the product of data needs -> more than needed in general)
-DA5) Allow capacity plot/extract - over multiple years and dts?
-DA6) Take into account fatal prod (ror) for net demand case
-DA7) Replace [-2] by an adaptive index to refer to extra-params idx at some stages
-DA8) Allow case (extract, load duration curve) - currently only possible to plot it
-DA9) Integrate hydro\RoR data in net_demand calc case -> already ok? (maybe not big impact...)
+DA4) Allow capacity plot/extract - over multiple years and dts?
+DA5) Take into account fatal prod (ror) for net demand case
+DA6) Replace [-2] by an adaptive index to refer to extra-params idx at some stages
+DA7) Allow case (extract, load duration curve) - currently only possible to plot it
+DA8) Integrate hydro\RoR data in net_demand calc case -> already ok? (maybe not big impact...)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 TOY EX (T) - my_toy_ex_italy.py. Some tasks shared with Eur (E) case following
@@ -65,23 +69,28 @@ T6) Introduce possibility to parametrize init_soc in input/long_term_uc/elec-eur
 -> in some extra-params section to be introduced?
 T7) Add possibility to have a CO2 limit on unique / multiple zone(s) -> with GlobalConstraint in PyPSA
 T/E8) ror with p_set input of PyPSA -> not integrated currently?
+E9) Add possibility to overwrite hydro capas (power and energy) - apparently not accounted for currently 
+(cf. eelisa students comments)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 EUROPE SIMUS (E) (my_little_europe_lt_uc.py)
 E1) Usage param auto fulfill interco capa missing -> ??
 E2) Add possibility to set Stock (additional to ERAA data) in JSON tb modif input file
 E3) Add possibility to provide additional fatal demand -> for iterations between UC and imperfect disaggreg of an aggregate DSR flex (EV for ex) modeled as a Stock for ex! (cf. OMCEP course)
-E6) Reformat/simplify JSON params file (in input/long_term_uc/elec-europe_params_to-be-modif.json
+E4) Reformat/simplify JSON params file (in input/long_term_uc/elec-europe_params_to-be-modif.json
 -> suppress "selec" prefix implicit for some params?
-E7) Get dual variable associated to link capa constraint
+E5) Get dual variable associated to link capa constraint
 -> not directly provided in PyPSA... needs to get it from Linopy
 -> cf. include\dataset_builder.py, get_link_capa_dual_var_opt function init
-E8) Connecter qques nouveaux params au JSON Eur 
+E6) Connecter qques nouveaux params au JSON Eur 
 -> SOC_init pour les (gros) stocks?
 -> Use "from_json_tb_modif" keyword in input\long_term_uc elec-europe_params_fixed.json
 (currently only "from_eraa_data" used)
 -> ctes dynamiques aussi
+E7) Add link congestion calculation -> % of link capa usage
+-> stat metrif of this in UCSummary
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 RUNNER (R) (main_runner.py)
 R1) Finish v1 runner
 -> (OJ) Copier le dossier .devcontainer (idem projet ElectricSystemPlanning) dans ce projet aussi -> pourquoi ?
@@ -93,8 +102,10 @@ R4) Save summary of input/output params in a JSON
 R5) Calculate metrics vs ERAA case (wo any modifs in JSON inputs)
 -> capas diff? Associated cost? Etc.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 PLOTS
 P1) Eco2mix colors TB completed -> coal; and markets to distinguish agg_prod_type with same colors
+P2) Introduce subfolders in output\figures directory to sort them (prod, link, etc.)
 P3) Check case with unique curve -> plot_dims obtained from UC ts name (call of def get_dims_from_uc_ts_name)
 P4) Plot tot export per country (on a unique graph)
 -> cf include\dataset_builder.py\init plot_cum_export_flows_at_opt func
@@ -104,7 +115,7 @@ P5) Fix pb with plots -> some curves missing (RES) due to plot_params sep ('-' i
 -> may be related to M0
 P6) Set default color in \input\functional_params\plot_params.json if 1 curve only (a group observed that it was - randomly? - 
 set to yellow in this case... not very visible!) 
-P7) Ajouter graphe camembert à la DJ 
+P7) Ajouter graphe camembert à la Damien JACOMY ("sunburst")
 -> to show congestion of intercos in an "aggreg. view"
 -> 'sunburst' graph, with different levels - (i) links (the more congested); (ii) season (summer/winter); 
 (iii) period in week (open day, 4h-block), (week-end day, 4h-block) could do 12 areas
