@@ -4,6 +4,8 @@ from typing import Dict, List, Optional, Tuple, Union
 import logging
 
 from common.constants.extract_eraa_data import ERAADatasetDescr
+from common.constants.optimisation import ZoneAndTempProdSumConstraint, CustomConstraintNames, ConstMultCoeffNames, \
+    CustomConstraintDirection
 from common.constants.prod_types import ProdTypeNames
 from common.constants.temporal import DATE_FORMAT_IN_JSON, MIN_DATE_IN_DATA, \
     MAX_DATE_IN_DATA, N_DAYS_UC_DEFAULT
@@ -44,6 +46,12 @@ class UCRunParams:
     updated_fuel_sources_params: Dict[str, Dict[str, Optional[float]]] = None
     # to indicate that some parameters have been changed compared to the set of the ones used for CP decision-making
     is_stress_test: bool = None
+    # some extra-parameters
+    co2_emis_price: float = None  # common over Eur. CO2 emissions price -> used in UC objective function
+    max_co2_emis_constraints: dict = None  # data to define max co2 emission constraints
+    # sum of production constraint objects, obtained based on previous dicts:
+    # sum_{z, t} prod(z, t) * coeff(z, t) <= ub (or >=)
+    sum_prod_constraints: List[ZoneAndTempProdSumConstraint] = None
 
     def __repr__(self):
         repr_str = 'UC long-term model run with params:'
@@ -89,6 +97,25 @@ class UCRunParams:
                 if len(new_params) > 0:
                     new_updated_fuel_source_params[source] = new_params
             self.updated_fuel_sources_params = new_updated_fuel_source_params
+
+        # process custom constraints data, e.g. max CO2 emissions one
+        if self.max_co2_emis_constraints is not None:
+            # add max CO2 emis constraints
+            self.sum_prod_constraints = []
+            for const_params in self.max_co2_emis_constraints['cases']:
+                self.sum_prod_constraints.append(
+                    ZoneAndTempProdSumConstraint(type=CustomConstraintNames.max_co2_emissions,
+                                                 direction=CustomConstraintDirection.lower,
+                                                 mult_coeff_name=ConstMultCoeffNames.co2_emis_factor,
+                                                 temporal_granularity=
+                                                 self.max_co2_emis_constraints['temporal_granularity'],
+                                                 countries=const_params['countries'],
+                                                 bound=const_params['upper_bound'])
+                )
+            # and process + check that they are coherently defined
+            for constraint in self.sum_prod_constraints:
+                constraint.process()
+                constraint.check(available_countries=available_countries)
 
     def set_is_stress_test(self, avail_cy_stress_test: List[int]):
         self.is_stress_test = self.selected_climatic_year in avail_cy_stress_test

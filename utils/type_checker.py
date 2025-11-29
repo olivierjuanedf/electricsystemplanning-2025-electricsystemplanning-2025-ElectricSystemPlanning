@@ -6,6 +6,7 @@ from common.error_msgs import print_errors_list
 
 @dataclass
 class CheckerNames:
+    is_dict: str = 'dict'
     is_str: str = 'str'
     is_int: str = 'int'
     is_float: str = 'float'
@@ -22,6 +23,10 @@ class CheckerNames:
     # "combination" of checkers above
     is_str_or_list_of_str: str = 'str_or_list_of_str'
     is_int_or_list_of_int: str = 'int_or_list_of_int'
+
+
+def check_dict(data_val) -> bool:
+    return isinstance(data_val, dict)
 
 
 # basic checker
@@ -142,22 +147,24 @@ def apply_data_type_check(data_type: str, data_val) -> bool:
 
 # correspondence between types and associated functions (and additional keyword args when applicable) 
 # to be applied for type check
-CHECK_FUNCTIONS = {CheckerNames.is_str: check_str,
-                   CheckerNames.is_int: check_int,
-                   CheckerNames.is_float: check_float,
-                   CheckerNames.is_list_of_int: check_list_of_int,
-                   CheckerNames.is_list_of_str: check_list_of_str,
-                   CheckerNames.is_none_or_list_of_str: check_none_or_list_of_str,
-                   CheckerNames.is_dict_str_dict: check_str_dict_dict, 
-                   CheckerNames.is_dict_str_list_of_float: check_str_list_of_float_dict,
-                   CheckerNames.is_dict_str_list_of_str: check_str_list_of_str_dict,
-                   CheckerNames.is_dict_str_str: check_str_str_dict,
-                   CheckerNames.is_dict_str_int: check_str_int_dict,
-                   CheckerNames.is_two_level_dict_str_str_list_of_str: check_str_str_list_of_str_dict,
-                   CheckerNames.is_two_level_dict_str_str_str: check_three_level_str_dict,
-                   CheckerNames.is_str_or_list_of_str: check_str_or_list_of_str,
-                   CheckerNames.is_int_or_list_of_int: check_int_or_list_of_int
-                   }
+CHECK_FUNCTIONS = {
+    CheckerNames.is_dict: check_dict,
+    CheckerNames.is_str: check_str,
+    CheckerNames.is_int: check_int,
+    CheckerNames.is_float: check_float,
+    CheckerNames.is_list_of_int: check_list_of_int,
+    CheckerNames.is_list_of_str: check_list_of_str,
+    CheckerNames.is_none_or_list_of_str: check_none_or_list_of_str,
+    CheckerNames.is_dict_str_dict: check_str_dict_dict,
+    CheckerNames.is_dict_str_list_of_float: check_str_list_of_float_dict,
+    CheckerNames.is_dict_str_list_of_str: check_str_list_of_str_dict,
+    CheckerNames.is_dict_str_str: check_str_str_dict,
+    CheckerNames.is_dict_str_int: check_str_int_dict,
+    CheckerNames.is_two_level_dict_str_str_list_of_str: check_str_str_list_of_str_dict,
+    CheckerNames.is_two_level_dict_str_str_str: check_three_level_str_dict,
+    CheckerNames.is_str_or_list_of_str: check_str_or_list_of_str,
+    CheckerNames.is_int_or_list_of_int: check_int_or_list_of_int
+}
 
 
 def apply_params_type_check(param_obj_dict: dict, types_for_check: Dict[str, str], param_name: str):

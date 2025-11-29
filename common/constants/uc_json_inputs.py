@@ -23,9 +23,15 @@ class EuropeJsonParamNames:
     uc_period_start: str = 'uc_period_start'
 
 
+@dataclass
+class EuropeJsonExtraParamNames:
+    co2_emis_price: str = 'co2_emis_price'
+    max_co2_emis: str = 'max_co2_emis_constraints'
+
+
 ALL_KEYWORD = 'all'
 OPTIONAL_EUR_JSON_PARAMS = [EuropeJsonParamNames.extra_params]
-EUR_JSON_PARAM_TYPES_FOR_CHECK = {EuropeJsonParamNames.extra_params: CheckerNames.is_dict_str_dict,
+EUR_JSON_PARAM_TYPES_FOR_CHECK = {EuropeJsonParamNames.extra_params: CheckerNames.is_dict,
                                   EuropeJsonParamNames.failure_penalty: CheckerNames.is_float,
                                   EuropeJsonParamNames.failure_power_capa: CheckerNames.is_float,
                                   EuropeJsonParamNames.interco_capas_tb_overwritten: CheckerNames.is_dict_str_int,

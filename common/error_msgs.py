@@ -14,3 +14,10 @@ def print_errors_list(error_name: str, errors_list: List[str]):
 
 def uncoherent_param_stop(param_errors: List[str]):
     print_errors_list(error_name='in JSON params to be modif. file', errors_list=param_errors)
+
+
+def unknown_value_error(var_name: str, value, available_values: list = None) -> str:
+    error_msg = f'Unknown {var_name} {value}'
+    if available_values is not None:
+        error_msg += f'it must be in {available_values}'
+    return error_msg

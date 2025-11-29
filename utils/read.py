@@ -12,7 +12,7 @@ from common.long_term_uc_io import get_json_usage_params_file, get_json_fixed_pa
 from common.constants.extract_eraa_data import ERAADatasetDescr, \
     PypsaStaticParams, UsageParameters
 from common.constants.uc_json_inputs import CountryJsonParamNames, EuropeJsonParamNames, ALL_KEYWORD, \
-    EUR_JSON_PARAM_TYPES_FOR_CHECK
+    EUR_JSON_PARAM_TYPES_FOR_CHECK, EuropeJsonExtraParamNames
 from common.constants.usage_params_json import USAGE_PARAMS_SHORT_NAMES, EnvPhaseNames
 from common.uc_run_params import UCRunParams
 from include.dataset_analyzer import DataAnalysis
@@ -181,8 +181,25 @@ def check_and_process_eur_json_tb_modified(json_data: dict):
         logging.warning(f'Unknown keys in {json_file}: {unknwon_keys} (must be in {known_keys})'
                         f'\n-> will not be taken into account here')
         json_data = {key: val for key, val in json_data.items() if key in known_keys}
+    # then that extra-params names are known
+    extra_params_key = EuropeJsonParamNames.extra_params
+    if extra_params_key in json_data:
+        avail_extra_param_names = get_default_values(obj=EuropeJsonExtraParamNames)
+        current_extra_param_names = list(json_data[extra_params_key])
+        unknown_extra_param_names = list(set(current_extra_param_names) - set(avail_extra_param_names))
+        if len(unknown_extra_param_names) > 0:
+            logging.warning(f'Unknown extra-param names in {json_file} (keys in dict. associated to '
+                            f'{extra_params_key}: {unknown_extra_param_names} (must be in {avail_extra_param_names})'
+                            f'\n-> will not be taken into account here')
+            json_data[extra_params_key] = \
+                {key: val for key, val in json_data[extra_params_key].items() if key in avail_extra_param_names}
+
     apply_params_type_check(json_data, types_for_check=EUR_JSON_PARAM_TYPES_FOR_CHECK,
                             param_name=f'European params to be modif. (from JSON file {json_file})')
+    # suppress first-level extra-params key in json params tb modif dict (if present)
+    if extra_params_key in json_data:
+        json_data |= json_data[extra_params_key]
+        del json_data[extra_params_key]
     return json_data
 
 

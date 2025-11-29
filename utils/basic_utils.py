@@ -3,6 +3,7 @@ from typing import List, Optional, Tuple, Union, Dict
 import numpy as np
 import math
 from dataclasses import fields, MISSING
+from collections import Counter
 
 
 CLIM_YEARS_SUFFIX = 'clim-years'  # TODO: set this constant in a more logical place... constant\...
@@ -104,6 +105,11 @@ def flatten_list_of_lists(list_of_lists: list) -> list:
 
 def get_intersection_of_lists(list1: list, list2: list) -> list:
     return list(set(list1) & set(list2))
+
+
+def get_repeated_elts_in_lst(my_lst: list) -> list:
+    counter = Counter(my_lst)
+    return [item for item, count in counter.items() if count > 1]
 
 
 def set_years_suffix(years: List[int], is_climatic_year: bool = False, sep: str = '-') -> str:

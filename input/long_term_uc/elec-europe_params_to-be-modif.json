@@ -40,19 +40,21 @@
     "germany2italy": 0
   },
   "extra_params": {
-    "max_co2_emis": {
-      "countries": [
-        "france",
-        "germany"
-      ],
-      "upper_bound": {
-        "granularity": "week",
-        "value": [
-          1,
-          2,
-          3
-        ]
-      }
+    "max_co2_emis_constraints": {
+      "temporal_granularity": "week",
+      "cases": [
+        {
+          "countries": [
+            "france",
+            "germany"
+          ],
+          "upper_bound": [
+            1,
+            2,
+            3
+          ]
+        }
+      ]
     },
     "co2_emis_price": 10
   }
