@@ -116,6 +116,7 @@ class ZoneAndTempProdSumConstraint:
             self.name = f'{n_countries}-countries'
 
     def process(self):
+        # add name if not provided
         if self.name is None:
             self.set_name()
 

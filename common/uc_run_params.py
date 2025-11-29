@@ -11,6 +11,7 @@ from common.constants.temporal import DATE_FORMAT_IN_JSON, MIN_DATE_IN_DATA, \
     MAX_DATE_IN_DATA, N_DAYS_UC_DEFAULT
 from common.constants.uc_json_inputs import ALL_KEYWORD
 from common.error_msgs import uncoherent_param_stop
+from include.timeseries import Timeseries
 from utils.basic_utils import are_lists_eq
 from utils.dates import get_period_str
 from utils.eraa_utils import set_interco_to_tuples
@@ -121,14 +122,19 @@ class UCRunParams:
         # add max CO2 emis constraints
         if self.max_co2_emis_constraints is not None:
             for const_params in self.max_co2_emis_constraints['cases']:
+                # create timeseries from upper bound value and timescale
+                temporal_granularity = self.max_co2_emis_constraints['temporal_granularity']
+                upper_bound_ts = Timeseries(timescale=temporal_granularity, value=const_params['upper_bound'])
+                upper_bound_ts.weigh_values(period_start=self.uc_period_start, period_end=self.uc_period_end)
+                # multiply extreme values of the serie to weigh them according to duration of first/last period (if
+                # not full, e.g. week with only 3 days)
                 self.sum_prod_constraints.append(
                     ZoneAndTempProdSumConstraint(type=CustomConstraintNames.max_co2_emissions,
                                                  direction=CustomConstraintDirection.lower,
                                                  mult_coeff_name=ConstMultCoeffNames.co2_emis_factor,
-                                                 temporal_granularity=
-                                                 self.max_co2_emis_constraints['temporal_granularity'],
+                                                 temporal_granularity=temporal_granularity,
                                                  countries=const_params['countries'],
-                                                 bound=const_params['upper_bound'])
+                                                 bound=upper_bound_ts.value)
                 )
             # and process + check that they are coherently defined
             for constraint in self.sum_prod_constraints:

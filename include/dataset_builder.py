@@ -280,7 +280,8 @@ class PypsaModel:
                      f'of origin: {set_per_origin_bus_links_msg(link_names=link_names)}')
 
     def build_model_before_adding_custom_const(self):
-        logging.warning('In PyPSA 0.35.1 not possible to build only model without solving it; to add custome constraints it will be solved first "for fun" (ignoring the solution)')
+        logging.warning('In PyPSA 0.35.1 not possible to build only model without solving it; '
+                        'to add custome constraints it will be solved first "for fun" (ignoring the solution)')
         # TODO: see if deactivate resolution logs, in cmd windows/log file
         self.network.optimize(build_only=True, solver_options={'logfile': '/dev/null'})
 

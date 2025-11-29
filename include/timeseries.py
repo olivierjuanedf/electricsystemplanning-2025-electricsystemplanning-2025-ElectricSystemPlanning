@@ -36,6 +36,8 @@ class Timeseries:
     def weigh_values(self, period_start: datetime, period_end: datetime):
         """
         Apply weight to first and last element in value, to account for possibly uncomplete timescale
+        :param period_start: start of the period (included)
+        :param period_end: end of the period, NOT included
         """
         if self.timescale == Timescale.day:
             start_hour = period_start.hour
@@ -44,8 +46,10 @@ class Timeseries:
             else:
                 first_weight = 1
             end_hour = period_end.hour
-            if len(self.value) > 1 and end_hour < 23:
-                last_weight = (end_hour + 1) / 24
+            # end hour not included -> if 0 the first one of next day;
+            # otherwise nber of hours in considered days is end_hour
+            if len(self.value) > 1 and end_hour > 0:
+                last_weight = end_hour / 24
             else:
                 last_weight = 1
         elif self.timescale == Timescale.week:
@@ -55,12 +59,15 @@ class Timeseries:
             else:
                 first_weight = 1
             end_isoweekday = period_end.isoweekday()
-            if len(self.value) > 1 and end_isoweekday < 7:
-                last_weight = end_isoweekday / 7
+            # end day not included -> if 1 the first one (Monday) of next week;
+            # otherwise nber of days in considered last week is end_isoweekday - 1
+            if len(self.value) > 1 and end_isoweekday > 1:
+                last_weight = (end_isoweekday - 1) / 7
             else:
                 last_weight = 1
         elif self.timescale == Timescale.month:
             start_day = period_start.day
+            # if start day is not 1st in calendar of current month, count nber of days in month from start one
             if not start_day == 1:
                 n_days_in_month_start = get_n_days_in_month(year=period_start.year, month=period_start.month)
                 first_weight = (n_days_in_month_start - start_day + 1) / n_days_in_month_start
@@ -68,10 +75,14 @@ class Timeseries:
                 first_weight = 1
             end_day = period_end.day
             n_days_in_month_end = get_n_days_in_month(year=period_end.year, month=period_end.month)
+            # if end day is not last in calendar of current month, count nber of days
+            # strictly before from 1st one in current month
             if not end_day == n_days_in_month_end:
-                last_weight = end_day / n_days_in_month_end
+                last_weight = (end_day - 1) / n_days_in_month_end
             else:
                 last_weight = 1
         # apply obtained weights for first and last time-slots
-        self.value[0] *= first_weight
-        self.value[-1] *= last_weight
+        first_value_weighted = round(self.value[0] * first_weight, 2)
+        last_value_weighted = round(self.value[-1] * last_weight, 2)
+        self.value[0] = first_value_weighted
+        self.value[-1] = last_value_weighted
