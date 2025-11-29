@@ -31,6 +31,17 @@ def coherent_target_year(errors_list: List[str]) -> bool:
     return all([UNKNOWN_TY_ERROR not in elt for elt in errors_list])
 
 
+def count_custom_const_per_type(constraints_lst: List[ZoneAndTempProdSumConstraint]) -> Dict[str, int]:
+    n_const_per_type = {}
+    for constraint in constraints_lst:
+        current_type = constraint.type
+        if current_type not in n_const_per_type:
+            n_const_per_type[current_type] = 1
+        else:
+            n_const_per_type[current_type] += 1
+    return n_const_per_type
+
+
 @dataclass
 class UCRunParams:
     selected_climatic_year: int
@@ -54,12 +65,19 @@ class UCRunParams:
     sum_prod_constraints: List[ZoneAndTempProdSumConstraint] = None
 
     def __repr__(self):
+        repr_sep = '\n- '
         repr_str = 'UC long-term model run with params:'
         n_countries = len(self.selected_countries)
-        repr_str += f'\n- {n_countries} country(ies): {self.selected_countries}'
+        repr_str += f'{repr_sep}{n_countries} country(ies): {self.selected_countries}'
         period_str = get_period_str(period_start=self.uc_period_start, period_end=self.uc_period_end)
-        repr_str += f'\n- year: {self.selected_target_year}, on period {period_str} (last time-slot excluded)'
-        repr_str += f'\n- climatic year: {self.selected_climatic_year}'
+        repr_str += f'{repr_sep}year: {self.selected_target_year}, on period {period_str} (last time-slot excluded)'
+        repr_str += f'{repr_sep}climatic year: {self.selected_climatic_year}'
+        if len(self.sum_prod_constraints) > 0:
+            n_constraints_per_type = count_custom_const_per_type(constraints_lst=self.sum_prod_constraints)
+            constraints_msg_elts = [f'{const_nber} {const_type}'
+                                    for const_type, const_nber in n_constraints_per_type.items()]
+            constraints_msg = '; '.join(constraints_msg_elts)
+            repr_str += f'{repr_sep}custom constraints: {constraints_msg}'
         return repr_str
 
     def process(self, available_countries: List[str], fullfill_selected_pt: bool = True):
@@ -98,10 +116,10 @@ class UCRunParams:
                     new_updated_fuel_source_params[source] = new_params
             self.updated_fuel_sources_params = new_updated_fuel_source_params
 
-        # process custom constraints data, e.g. max CO2 emissions one
+        # process custom sum-prod. constraints data, e.g. max CO2 emissions one
+        self.sum_prod_constraints = []
+        # add max CO2 emis constraints
         if self.max_co2_emis_constraints is not None:
-            # add max CO2 emis constraints
-            self.sum_prod_constraints = []
             for const_params in self.max_co2_emis_constraints['cases']:
                 self.sum_prod_constraints.append(
                     ZoneAndTempProdSumConstraint(type=CustomConstraintNames.max_co2_emissions,
