@@ -125,6 +125,8 @@ class UCRunParams:
                 # create timeseries from upper bound value and timescale
                 temporal_granularity = self.max_co2_emis_constraints['temporal_granularity']
                 upper_bound_ts = Timeseries(timescale=temporal_granularity, value=const_params['upper_bound'])
+                upper_bound_ts.check(period_start=self.uc_period_start, period_end=self.uc_period_end,
+                                     with_whole_period_gran=True)
                 upper_bound_ts.weigh_values(period_start=self.uc_period_start, period_end=self.uc_period_end)
                 # multiply extreme values of the serie to weigh them according to duration of first/last period (if
                 # not full, e.g. week with only 3 days)

@@ -4,7 +4,9 @@ from typing import List, Union
 
 import numpy as np
 
+from common.constants.optimisation import WHOLE_PERIOD_GRANULARITY
 from common.constants.temporal import Timescale
+from utils.basic_utils import get_default_values
 from utils.dates import get_n_days_in_period, get_n_weeks_in_period, get_n_months_in_period, get_n_days_in_month
 
 
@@ -13,7 +15,11 @@ class Timeseries:
     timescale: str
     value: Union[float, np.ndarray]
 
-    def check(self, allowed_timescales: List[str], period_start: datetime, period_end: datetime):
+    def check(self, period_start: datetime, period_end: datetime, with_whole_period_gran: bool = False):
+        allowed_timescales = get_default_values(obj=Timescale)
+        # add whole period "granularity"? In this case value must be of length 1
+        if with_whole_period_gran:
+            allowed_timescales.append(WHOLE_PERIOD_GRANULARITY)
         # that timescale be in the list of allowed ones
         if self.timescale not in allowed_timescales:
             raise Exception(f'Timeseries with non-allowed timescale {self.timescale}; '
@@ -26,7 +32,10 @@ class Timeseries:
                 Timescale.week: get_n_weeks_in_period,
                 Timescale.month: get_n_months_in_period,
             }
-            n_ts_in_period = timescale_to_func.get(self.timescale)(start=period_start, end=period_end)
+            if self.timescale == WHOLE_PERIOD_GRANULARITY:
+                n_ts_in_period = 1
+            else:
+                n_ts_in_period = timescale_to_func.get(self.timescale)(start=period_start, end=period_end)
             len_value = len(self.value)
             if not len_value == n_ts_in_period:
                 raise Exception(f'Timesrie value has length {len_value}, but must be {n_ts_in_period} to be coherent '

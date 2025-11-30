@@ -76,6 +76,11 @@ class ConstMultCoeffNames:
     co2_emis_factor: str = 'co2_emis_factor'
 
 
+# TODO: put as object (below) constants?
+N_COUNTRIES_MAX_IN_NAME = 3
+WHOLE_PERIOD_GRANULARITY: str = 'whole_period'
+
+
 @dataclass
 class ZoneAndTempProdSumConstraint:
     """
@@ -92,9 +97,6 @@ class ZoneAndTempProdSumConstraint:
     countries: List[str]  # over which constraints is to be imposed
     bound: np.ndarray
     name: str = None
-    # constants
-    N_COUNTRIES_MAX_IN_NAME = 3
-    WHOLE_PERIOD_GRANULARITY: str = 'whole_period'
 
     def __repr__(self) -> str:
         attr_sep = '\n- '
@@ -109,7 +111,7 @@ class ZoneAndTempProdSumConstraint:
 
     def set_name(self):
         n_countries = len(self.countries)
-        if n_countries <= self.N_COUNTRIES_MAX_IN_NAME:
+        if n_countries <= N_COUNTRIES_MAX_IN_NAME:
             country_trigrams = [set_country_trigram(elt) for elt in self.countries]
             self.name = '-'.join(country_trigrams)
         else:
@@ -139,7 +141,7 @@ class ZoneAndTempProdSumConstraint:
         # -> stop with error if not valid
         available_temp_granularities = get_default_values(obj=Timescale)
         # add 'granularity' corresponding to the application of this constraint to whole period
-        available_temp_granularities.append(self.WHOLE_PERIOD_GRANULARITY)
+        available_temp_granularities.append(WHOLE_PERIOD_GRANULARITY)
         avail_const_directions = get_default_values(obj=CustomConstraintDirection)
         avail_mult_coeff_names = get_default_values(obj=ConstMultCoeffNames)
         known_value_checks = {'temporal granularity': (self.temporal_granularity, available_temp_granularities),
