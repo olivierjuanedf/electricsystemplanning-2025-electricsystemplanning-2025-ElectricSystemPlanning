@@ -285,6 +285,15 @@ class PypsaModel:
         # TODO: see if deactivate resolution logs, in cmd windows/log file
         self.network.optimize(build_only=True, solver_options={'logfile': '/dev/null'})
 
+    def add_sum_of_prod_custom_const(self):
+        """
+        Add sum-of-production custom constraints, of the form sum_{z, t} coeff(z, t) * production(z, t) <= ub (or >=, =)
+        N.B. Can be applied to CO2 max emission constraints
+        Returns:
+        """
+        logging.warning(f'Add custom sum of prod constraints (sum over z,t coeff(z,t) * prod(z, t) <= ub, or >=, =; '
+                        f'used, e.g. for max CO2 emissions) -> to be coded')
+
     def add_hydro_extreme_levels_constraint(self, soc_min: Dict[str, np.ndarray], soc_max: Dict[str, np.ndarray], 
                                             energy_capa: Dict[str, np.ndarray]):
         """
