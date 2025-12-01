@@ -1,19 +1,25 @@
+import logging
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Union
 
 import numpy as np
+import pandas as pd
+from dateutil.relativedelta import relativedelta
 
 from common.constants.optimisation import WHOLE_PERIOD_GRANULARITY
 from common.constants.temporal import Timescale
 from utils.basic_utils import get_default_values
-from utils.dates import get_n_days_in_period, get_n_weeks_in_period, get_n_months_in_period, get_n_days_in_month
+from utils.dates import get_n_days_in_period, get_n_weeks_in_period, get_n_months_in_period, get_n_days_in_month, \
+    timestamp_to_datetime
 
 
 @dataclass
 class Timeseries:
     timescale: str
     value: Union[float, np.ndarray]
+    # list of dates corresponding to value vectors; value[i] being for [dates[i], dates[i+1][
+    dates: List[datetime] = None
 
     def check(self, period_start: datetime, period_end: datetime, with_whole_period_gran: bool = False):
         allowed_timescales = get_default_values(obj=Timescale)
@@ -41,6 +47,43 @@ class Timeseries:
                 raise Exception(f'Timesrie value has length {len_value}, but must be {n_ts_in_period} to be coherent '
                                 f'with start {period_start: %Y/%m/%d}, end {period_end: %Y/%m/%d} and timescale '
                                 f'{self.timescale}')
+
+    def set_dates(self, period_start: datetime, period_end: datetime):
+        if self.dates is not None:
+            logging.warning(f'Timeseries dates will be overwritten based on period start/end '
+                            f'and timescale {self.timescale}')
+        if self.timescale in [Timescale.day, Timescale.week]:
+            period_start_day = datetime(year=period_start.year, month=period_start.month, day=period_start.day)
+            period_end_day = datetime(year=period_end.year, month=period_end.month, day=period_end.day)
+            start_date = period_start_day
+            end_date = period_end_day
+            # Weekly timescale: start (resp. end) date is Monday preceding (resp. just after) period start (resp. end)
+            if self.timescale == Timescale.week:
+                start_date -= timedelta(days=period_start.isoweekday() - 1)
+                end_date += timedelta(days=(8 - period_end.isoweekday()) % 7)
+        elif self.timescale == Timescale.month:  # first day of month of period_start
+            start_date = datetime(year=period_start.year, month=period_start.month, day=1)
+            end_date = datetime(year=period_end.year, month=period_end.month, day=1)
+            # 1st of next month if period_end not start of a month
+            if not period_end.day == 1:
+                end_date += relativedelta(months=1)
+        # easy using date range...
+        if self.timescale in [Timescale.day, Timescale.week]:
+            range_freq = '1d' if self.timescale == Timescale.day else '7d'
+            period_date_range = pd.date_range(start=start_date, end=end_date, freq=range_freq).to_list()
+            period_date_range = [timestamp_to_datetime(my_date=date) for date in period_date_range]
+        # looping on dates with 1-month relativedelta
+        elif self.timescale == Timescale.month:
+            period_date_range = [start_date]
+            current_date = start_date
+            while current_date + relativedelta(months=1) <= end_date:
+                current_date += relativedelta(months=1)
+                period_date_range.append(current_date)
+        # set dates as date range
+        self.dates = period_date_range
+        # then correct first/last
+        self.dates[0] = period_start
+        self.dates[-1] = period_end
 
     def weigh_values(self, period_start: datetime, period_end: datetime):
         """

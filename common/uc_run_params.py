@@ -127,8 +127,10 @@ class UCRunParams:
                 upper_bound_ts = Timeseries(timescale=temporal_granularity, value=const_params['upper_bound'])
                 upper_bound_ts.check(period_start=self.uc_period_start, period_end=self.uc_period_end,
                                      with_whole_period_gran=True)
+                # set dates associated to upper bound values
+                upper_bound_ts.set_dates(period_start=self.uc_period_start, period_end=self.uc_period_end)
                 upper_bound_ts.weigh_values(period_start=self.uc_period_start, period_end=self.uc_period_end)
-                # multiply extreme values of the serie to weigh them according to duration of first/last period (if
+                # multiply extreme values of the series to weigh them according to duration of first/last period (if
                 # not full, e.g. week with only 3 days)
                 self.sum_prod_constraints.append(
                     ZoneAndTempProdSumConstraint(type=CustomConstraintNames.max_co2_emissions,

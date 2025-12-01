@@ -111,14 +111,14 @@ def set_date_xtick_labels(idx_xticks: List[int], x_dates: List[datetime], date_x
                     current_date_fmt = '%d'
                 date_str = current_date.strftime(current_date_fmt)
                 if short_months and 'B' in current_date_fmt:
-                    date_str = set_month_short_in_date(date=date_str)
+                    date_str = set_month_short_in_date(my_date=date_str)
 
                 if rm_useless_zeros:
                     date_str = remove_useless_zero_in_date(date=date_str, date_sep=' ')
 
                 # add day exponent?
                 if add_day_exp and len(date_str) > 0:
-                    date_str = add_day_exponent(date=date_str)
+                    date_str = add_day_exponent(my_date=date_str)
                 # add hours
                 # new line if year or month in str
                 if len(date_str) >= 3:
