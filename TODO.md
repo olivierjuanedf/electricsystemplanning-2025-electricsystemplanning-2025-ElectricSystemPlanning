@@ -7,6 +7,8 @@ M0) (IMPORTANT!) Unique prod types def. in (i) all data files, (ii) constants of
 and (iii) input JSON files 
 -> suppressing redundant constants/input data?
 -> pb with wind_onshore vs wind_on_shore for ex...
+-> (OB, 4/4/2026) Fait dans le code ; resterait à vérif/unifier dans les données... (pour l'instant reformatage fait 
+à la lecture)
 M1) Switch to PyPSA 1.0?
 M2) Update readme.md -> screenshots with new names for project 
 M3) Remove unnecessary/redundant constants 
@@ -28,6 +30,7 @@ M16) Select only data of considered cys when reading data in dataset.py\get_coun
 -> seems not TB done for all dts
 M17) Test Jules from Google to rapidly reformat/add tests to this code project?
 -> https://jules.google/
+M18) Réel intérêt du mode solo vs. europe ou seulement confusant pour les élèves ?
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 DATA (D)
@@ -39,7 +42,6 @@ D1) Add ERAA ed. 2024, with climatic modelling...
 D2) Pb with hydro data/week idx when both day and week given they seem equal...
 D3) Fix solar thermal key issue - identical to the one with solar_pv vs lfsolarpv previously?
 D4) Redondances country.json et europe_tb_modif.json ?
-D5) Réel intérêt du mode solo vs. europe ou seulement confusant pour les élèves ?
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 DATA ANALYSIS (DA) - before 1st UC run, to get an intuition of the pbs - my_little_europe_data_analysis.py
