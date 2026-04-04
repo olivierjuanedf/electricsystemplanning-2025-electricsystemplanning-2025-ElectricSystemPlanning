@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 from common.constants.countries import set_country_trigram
 from common.constants.optimisation import OptimSolvers, DEFAULT_OPTIM_SOLVER_PARAMS, SolverParams, \
     OptimPbCharacteristics, OptimPbTypes
-from common.constants.prod_types import get_country_from_unit_name
+from common.constants.prod_types import get_country_from_unit_name, ProdTypeNames
 from common.constants.pypsa_params import GEN_UNITS_PYPSA_PARAMS
 from common.error_msgs import print_errors_list
 from common.fuel_sources import FuelSource
@@ -337,6 +337,17 @@ class PypsaModel:
         if lexico_sort:
             link_names = sort_lexicographically(strings=link_names)
         return link_names
+
+    def get_per_bus_total_installed_capa(self):
+        bus_names = self.get_bus_names()
+        df_generators = self.network.generators
+        return {name: df_generators.loc[(df_generators.index.str.startswith(f'{name}-'))
+                                        & (df_generators['type'] != ProdTypeNames.failure), 'p_nom'].sum()
+                for name in bus_names}
+
+    def get_per_bus_max_load(self) -> Dict[str, float]:
+        bus_names = self.get_bus_names()
+        return {name: max(self.network.loads_t['p_set'][f'{name}-load']) for name in bus_names}
 
     def plot_network(self, toy_model_output: bool = False, country: str = None):
         # catch DeprecationWarnings TODO: fix/more robust way to catch them?

@@ -11,6 +11,7 @@ from common.constants.extract_eraa_data import ERAADatasetDescr
 from common.constants.optimisation import OPTIM_RESOL_STATUS, DEFAULT_OPTIM_SOLVER_PARAMS, SolverParams
 from common.constants.plots import PlotNames
 from common.constants.usage_params_json import EnvPhaseNames
+from common.error_msgs import infeas_debugging_hints_msg
 from common.fuel_sources import set_fuel_sources_from_json, DUMMY_FUEL_SOURCES, FuelSource
 from common.logger import init_logger, stop_logger, deactivate_verbose_warnings, TITLE_LOG_SEP
 from common.long_term_uc_io import set_full_lt_uc_output_folder
@@ -218,6 +219,10 @@ def save_data_and_fig_results(pypsa_model: PypsaModel, uc_run_params: UCRunParam
         logging.info(f'Optimisation resolution status is not {pypsa_opt_resol_status} '
                      f'-> output data (resp. figures) cannot be saved (resp. plotted), '
                      f'and None UCSummaryMetrics returned')
+        per_bus_total_capa = pypsa_model.get_per_bus_total_installed_capa()
+        per_bus_max_load = pypsa_model.get_per_bus_max_load()
+        infeas_debug_hints_msg = infeas_debugging_hints_msg(total_capa=per_bus_total_capa, max_load=per_bus_max_load)
+        logging.info(infeas_debug_hints_msg)
         return None
 
 

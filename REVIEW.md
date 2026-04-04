@@ -88,7 +88,7 @@ la ligne" (données inclues)
                                        toy_model_output=True)
   ```
 - Reproduire le même diagnostic dans `my_little_europe_lt_uc.py` (fonction `save_data_and_fig_results`, bloc `else` ligne ~213).
-
+  (OB, 4/4/2026, commit XXX) TODO: tester/affiner calcul de la capa max (avec FC EnR moyen pour les capas EnR ?)
 ---
 
 ### 🟠 Priorité 2 — Impact Fort, Effort Raisonnable

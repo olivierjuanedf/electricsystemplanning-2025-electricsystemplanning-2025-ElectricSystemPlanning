@@ -3,6 +3,7 @@
 First very simple toy Unit Commitment (UC) model of Italy zone - alone -> with PyPSA and ERAA data
 -> you can copy/paste some piece of this code to obtain your my_toy_ex_{country}.py own script
 """
+from common.error_msgs import infeas_debugging_hints_msg
 
 """
   0) Preliminar functional aspects / technical functions
@@ -344,6 +345,10 @@ if optim_status == pypsa_opt_resol_status:
 else:
     print(f'Optimisation resolution status is not {pypsa_opt_resol_status} '
           f'-> output data (resp. figures) cannot be saved (resp. plotted), excepting installed capas one')
+    total_capa = sum(g['p_nom'] for g in generators if 'p_nom' in g)
+    max_load = eraa_dataset.demand[country].max().values[0]
+    infeas_debug_hints_msg = infeas_debugging_hints_msg(total_capa=total_capa, max_load=max_load)
+    print(infeas_debug_hints_msg)
     pypsa_model.plot_installed_capas(country=country, year=uc_run_params.selected_target_year,
                                      toy_model_output=True)
 
