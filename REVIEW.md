@@ -62,6 +62,8 @@ Le projet est **techniquement solide** dans ses intentions : bonnes abstractions
   3. Corriger de manière systématique avec sed ou un script dédié
   4. Vérifier que les clés dans les fichiers CSV ERAA correspondent bien
 
+(OB, 4/4/2026; commit 7d6fab08) Hors du 4. qui resterait à vérifier/parfaire pour que ce point soit unifié sur "toute 
+la ligne" (données inclues)
 ---
 
 #### P1-C : Aucun message utile en cas d'infaisabilité
