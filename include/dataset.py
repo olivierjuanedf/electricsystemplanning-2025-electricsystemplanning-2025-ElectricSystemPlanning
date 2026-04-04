@@ -150,7 +150,7 @@ def get_installed_gen_capas_data(folder: str, file_suffix: str, country: str, ag
 
 
 def set_final_hydro_key_cols(hydro_dt: str) -> List[str]:
-    key_cols = HYDRO_KEY_COLUMNS[hydro_dt]
+    key_cols = deepcopy(HYDRO_KEY_COLUMNS[hydro_dt])
     # week and day idx columns have been removed when reading and processing
     for col in [COLUMN_NAMES.day, COLUMN_NAMES.week]:
         if col in key_cols:

@@ -132,11 +132,11 @@ solar_pv_cf_data = {
     country: selec_in_df_based_on_list(df=eraa_dataset.agg_cf_data[country], selec_col=prod_type_col,
                                        selec_vals=[ProdTypeNames.solar_pv], rm_selec_col=True)
 }
-wind_on_shore_cf_data = {
+wind_onshore_cf_data = {
     country: selec_in_df_based_on_list(df=eraa_dataset.agg_cf_data[country], selec_col=prod_type_col,
                                        selec_vals=[ProdTypeNames.wind_onshore], rm_selec_col=True)
 }
-wind_off_shore_cf_data = {
+wind_offshore_cf_data = {
     country: selec_in_df_based_on_list(df=eraa_dataset.agg_cf_data[country], selec_col=prod_type_col,
                                        selec_vals=[ProdTypeNames.wind_offshore], rm_selec_col=True)
 }
@@ -221,8 +221,8 @@ fuel_sources = set_fuel_sources_from_json()
 # get properties of generators to be set on the unique considered bus here
 # -> from toy_model_params/italy_parameters.py script
 generators = get_generators(country_trigram=country_trigram, fuel_sources=fuel_sources,
-                            wind_on_shore_cf_data=wind_on_shore_cf_data[country],
-                            wind_off_shore_cf_data=wind_off_shore_cf_data[country],
+                            wind_onshore_cf_data=wind_onshore_cf_data[country],
+                            wind_offshore_cf_data=wind_offshore_cf_data[country],
                             solar_pv_cf_data=solar_pv_cf_data[country],
                             hydro_reservoir_inflows_data=hydro_reservoir_inflows_data[country],
                             open_loop_pump_sto_inflows_data=open_loop_pump_sto_inflows_data[country])

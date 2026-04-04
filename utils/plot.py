@@ -114,7 +114,7 @@ def set_date_xtick_labels(idx_xticks: List[int], x_dates: List[datetime], date_x
                     date_str = set_month_short_in_date(my_date=date_str)
 
                 if rm_useless_zeros:
-                    date_str = remove_useless_zero_in_date(date=date_str, date_sep=' ')
+                    date_str = remove_useless_zero_in_date(my_date=date_str, date_sep=' ')
 
                 # add day exponent?
                 if add_day_exp and len(date_str) > 0:

@@ -21,14 +21,14 @@ def filter_input_data(df: pd.DataFrame, date_col: str, climatic_year_col: str, p
     if not isinstance(first_date, datetime):
         df = cast_df_col_as_date(df=df, date_col=date_col, date_format=DATE_FORMAT)
     # keep only wanted date range
-    df_filtered = get_subdf_from_date_range(df=df, date_col=date_col, date_min=period_start, date_max=period_end)
+    df_filtered = get_subdf_from_date_range(df=df, date_col=date_col, date_min=period_start, date_max=period_end).copy()
     # then selected climatic year
     if climatic_year_col in df_filtered.columns:
         df_filtered = selec_in_df_based_on_list(df=df_filtered, selec_col=climatic_year_col, selec_vals=[climatic_year])
     # cases with data inependent of climatic years (e.g. hydro reservoir min/max levels)
     # -> add climatic year col (+ selected value in it) to have uniform formats hereafter
     else:
-        df_filtered[climatic_year_col] = climatic_year
+        df_filtered.loc[:, climatic_year_col] = climatic_year
     return df_filtered
 
 

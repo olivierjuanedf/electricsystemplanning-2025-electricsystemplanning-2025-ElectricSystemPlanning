@@ -11,16 +11,16 @@ GENERATOR_DICT_TYPE = Dict[str, Union[float, int, str]]
 gps_coords = (12.5674, 41.8719)
 
 
-def get_generators(country_trigram: str, fuel_sources: Dict[str, FuelSource], wind_on_shore_cf_data: pd.DataFrame,
-                   wind_off_shore_cf_data: pd.DataFrame, solar_pv_cf_data: pd.DataFrame,
+def get_generators(country_trigram: str, fuel_sources: Dict[str, FuelSource], wind_onshore_cf_data: pd.DataFrame,
+                   wind_offshore_cf_data: pd.DataFrame, solar_pv_cf_data: pd.DataFrame,
                    hydro_reservoir_inflows_data: pd.DataFrame = None,
                    open_loop_pump_sto_inflows_data: pd.DataFrame = None) -> List[GENERATOR_DICT_TYPE]:
     """
     Get list of generators to be set on a given node of a PyPSA model
     :param country_trigram: name of considered country, as a trigram (ex: "ben", "fra", etc.)
     :param fuel_sources
-    :param wind_on_shore_cf_data: df with columns ['date', 'value']
-    :param wind_off_shore_cf_data: idem
+    :param wind_onshore_cf_data: df with columns ['date', 'value']
+    :param wind_offshore_cf_data: idem
     :param solar_pv_cf_data: idem
     :param hydro_reservoir_inflows_data: idem
     :param open_loop_pump_sto_inflows_data: idem
@@ -35,7 +35,7 @@ def get_generators(country_trigram: str, fuel_sources: Dict[str, FuelSource], wi
     -> see field 'generator_params_default_vals' in file input/long_term_uc/pypsa_static_params.json
     """
     # get number of time-slots based on length of CF data
-    n_ts = len(wind_on_shore_cf_data['value'].values)
+    n_ts = len(wind_onshore_cf_data['value'].values)
     inflows_sensitivity_coeff = 0.5
     generators = [
         {
@@ -67,17 +67,17 @@ def get_generators(country_trigram: str, fuel_sources: Dict[str, FuelSource], wi
             GEN_UNITS_PYPSA_PARAMS.efficiency: 0.4
         },
         {
-            GEN_UNITS_PYPSA_PARAMS.name: f'{country_trigram}_wind_on_shore',
+            GEN_UNITS_PYPSA_PARAMS.name: f'{country_trigram}_wind_onshore',
             GEN_UNITS_PYPSA_PARAMS.carrier: FuelNames.wind,
             GEN_UNITS_PYPSA_PARAMS.nominal_power: 14512,
-            GEN_UNITS_PYPSA_PARAMS.max_power_pu: wind_on_shore_cf_data['value'].values,
+            GEN_UNITS_PYPSA_PARAMS.max_power_pu: wind_onshore_cf_data['value'].values,
             GEN_UNITS_PYPSA_PARAMS.marginal_cost: fuel_sources[FuelNames.wind].primary_cost
         },
         {
-            GEN_UNITS_PYPSA_PARAMS.name: f'{country_trigram}_wind_off_shore',
+            GEN_UNITS_PYPSA_PARAMS.name: f'{country_trigram}_wind_offshore',
             GEN_UNITS_PYPSA_PARAMS.carrier: FuelNames.wind,
             GEN_UNITS_PYPSA_PARAMS.nominal_power: 791,
-            GEN_UNITS_PYPSA_PARAMS.max_power_pu: wind_off_shore_cf_data['value'].values,
+            GEN_UNITS_PYPSA_PARAMS.max_power_pu: wind_offshore_cf_data['value'].values,
             GEN_UNITS_PYPSA_PARAMS.marginal_cost: fuel_sources[FuelNames.wind].primary_cost
         },
         {
