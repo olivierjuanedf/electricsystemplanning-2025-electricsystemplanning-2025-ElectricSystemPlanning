@@ -6,7 +6,7 @@
       "countries": "france",
       "years": [2025],
       "climatic_years": [1985, 2016],
-      "aggreg_prod_types": ["wind_offshore"]
+      "aggreg_prod_types": ["wind_offshore", "solar_pv"]
     }
   ]
 }

@@ -2,13 +2,13 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from itertools import product
-from typing import List, Union, Dict, Tuple
+from typing import List, Union, Dict, Tuple, Optional
 
 import numpy as np
 import pandas as pd
 
 from common.constants.data_analysis_types import ANALYSIS_TYPES, ANALYSIS_TYPES_PLOT, AVAILABLE_ANALYSIS_TYPES
-from common.constants.datatypes import DatatypesNames, UNITS_PER_DT
+from common.constants.datatypes import DatatypesNames, UNITS_PER_DT, DATATYPE_NAMES
 from common.constants.extract_eraa_data import ERAADatasetDescr, FICTIVE_CALENDAR_YEAR
 from common.constants.temporal import DATE_FORMAT_IN_JSON, MAX_DATE_IN_DATA, N_DAYS_DATA_ANALYSIS_DEFAULT
 from common.error_msgs import uncoherent_param_stop
@@ -322,6 +322,26 @@ class DataAnalysis:
 
     def set_agg_prod_types_to_default_val(self):
         self.aggreg_prod_types = [None]
+
+    def get_dt_suffix_for_output(self) -> Optional[str]:
+        # ATTENTION TRICKY ASPECT: agg. prod. types only used for net demand calculation,
+        # not to have 1 curve/block of data per case -> set this attr. to [None] after data selection
+        if self.data_type == DATATYPE_NAMES.net_demand and not self.aggreg_prod_types == [None]:
+            logging.debug('Aggreg. prod. types attr. set to None after data selection for net demand analysis')
+            # save first a "datatype-suffix" to identify this case in filename saved
+            n_agg_pt = len(self.aggreg_prod_types)
+            if n_agg_pt == 1:
+                dt_suffix_for_output = f'incl_{self.aggreg_prod_types[0]}'
+            else:
+                dt_suffix_for_output = f'incl_{n_agg_pt}-aggpts'
+            self.set_agg_prod_types_to_default_val()
+            return dt_suffix_for_output
+        if self.data_type in [DATATYPE_NAMES.capa_factor, DATATYPE_NAMES.fatal_production]:
+            n_agg_pt = len(self.aggreg_prod_types)
+            # if unique aggreg. pt otherwise neithed legend label nor filename would allow to identify pt
+            if n_agg_pt == 1:
+                return self.aggreg_prod_types[0]
+        return None
 
     def get_extra_args_idx_to_label_corresp(self) -> Dict[int, str]:
         return {elt.index: elt.label for elt in self.extra_params if elt is not None}
