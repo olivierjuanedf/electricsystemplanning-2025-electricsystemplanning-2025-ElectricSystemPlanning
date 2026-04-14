@@ -53,6 +53,7 @@ DA6) Replace [-2] by an adaptive index to refer to extra-params idx at some stag
 DA7) Allow case (extract, load duration curve) - currently only possible to plot it
 DA8) Integrate hydro\RoR data in net_demand calc case -> already ok? (maybe not big impact...)
 DA9) Improve names of CF/fatal prod figures when only 1 agg pt selected (xx_agg-pt-name_yyy_1-agg-pt -> last part of suffix useless)
+DA10) (Bogue) Cas avec solar_pv/wind_offshore et 2 années clim... Pb to get a product on 2 dims ? (CY and agg pt)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 TOY EX (T) - my_toy_ex_italy.py. Some tasks shared with Eur (E) case following

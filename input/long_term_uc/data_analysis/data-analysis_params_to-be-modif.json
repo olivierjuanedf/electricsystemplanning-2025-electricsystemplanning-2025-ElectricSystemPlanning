@@ -5,7 +5,7 @@
       "data_type": "res_capa-factors",
       "countries": "france",
       "years": [2025],
-      "climatic_years": [1985, 2016],
+      "climatic_years": 1985,
       "aggreg_prod_types": ["wind_offshore", "solar_pv"]
     }
   ]
