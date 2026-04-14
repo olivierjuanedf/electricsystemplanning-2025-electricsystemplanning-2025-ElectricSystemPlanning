@@ -49,7 +49,6 @@ DA1) Add datatype=production in possible values (for agg. prod types for which p
 DA3) (improve code quality) Avoid creating Dataset object once per data analysis - getting once all data needed (however it should be done
 on the product of data needs -> more than needed in general)
 DA4) Allow capacity plot/extract - over multiple years and dts?
-DA5) Take into account fatal prod (ror) for net demand case
 DA6) Replace [-2] by an adaptive index to refer to extra-params idx at some stages
 DA7) Allow case (extract, load duration curve) - currently only possible to plot it
 DA8) Integrate hydro\RoR data in net_demand calc case -> already ok? (maybe not big impact...)

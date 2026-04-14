@@ -2,7 +2,7 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from itertools import product
-from typing import List, Union, Dict, Tuple, Optional
+from typing import List, Union, Dict, Tuple
 
 import numpy as np
 import pandas as pd
@@ -256,9 +256,22 @@ class DataAnalysis:
 
     def coherence_check(self, eraa_data_descr: ERAADatasetDescr, n_curves_max: int):
         errors_list = []
-        # check that analysis type is in the list of allowed values
+        # check that analysis type (plot, extract, etc.) is in the list of allowed values
         if self.analysis_type not in AVAILABLE_ANALYSIS_TYPES:
             errors_list.append(f'Unknown data analysis type: {self.analysis_type}')
+        # some ad-hoc checks for datatype
+        # for production
+        if self.data_type == DatatypesNames.fatal_production:
+            # check that some aggreg. pt are provided
+            if self.aggreg_prod_types is None:
+                errors_list.append(f'For {self.analysis_type} with {DatatypesNames.fatal_production} some aggreg. '
+                                   f'prod. types must be specified')
+            else:  # and that they correspond to pt with CF data
+                agg_pt_wo_cf_data = set(self.aggreg_prod_types) - set(eraa_data_descr.agg_prod_types_with_cf_data)
+                if len(agg_pt_wo_cf_data) > 0:
+                    errors_list.append(f'For {self.analysis_type} with {DatatypesNames.fatal_production}, aggreg. prod. '
+                                       f'types without CF data: {agg_pt_wo_cf_data}')
+
         # check country
         unknown_countries = [elt for elt in self.countries if elt not in eraa_data_descr.available_countries]
         if len(unknown_countries) > 0:
@@ -341,10 +354,6 @@ class DataAnalysis:
                 product(self.countries, self.years, self.climatic_years, self.extra_params, self.aggreg_prod_types)):
             try:
                 extra_params_idx = current_extra_params.index if current_extra_params is not None else None
-                # if no sub-datatypes, i.e. unique one equal to dt data is directly the obtained df from reading phase
-                if agg_pt is None:
-                    current_subdt_data = per_case_data[(country, year, clim_year, extra_params_idx)]
-
                 # N.B. dates are the same for all agg. prod types - but copied for simplicity here
                 # if no agg. pt selection
                 if agg_pt is None:

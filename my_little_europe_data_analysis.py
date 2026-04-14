@@ -26,7 +26,8 @@ eraa_data_descr, uc_run_params = read_and_check_uc_run_params(phase_name=phase_n
 
 # set params and figure style for plots
 per_dim_plot_params = read_plot_params()
-fig_style = read_given_phase_specific_key_from_plot_params(phase_name=phase_name, param_to_be_set=PlotParamsKeysInJson.fig_style)
+fig_style = read_given_phase_specific_key_from_plot_params(phase_name=phase_name,
+                                                           param_to_be_set=PlotParamsKeysInJson.fig_style)
 print_non_default(obj=fig_style, obj_name=f'FigureStyle - for phase {phase_name}', log_level='debug')
 
 # read and check data analyses params
@@ -74,20 +75,16 @@ for elt_analysis in data_analyses:
                                         datatypes_selec=[elt_analysis.data_type],
                                         subdt_selec=subdt_selec, **extra_params_vals)
         eraa_dataset.complete_data()
+        per_dt_data = {DATATYPE_NAMES.demand: eraa_dataset.demand,
+                       DATATYPE_NAMES.capa_factor: eraa_dataset.agg_cf_data,
+                       DATATYPE_NAMES.net_demand: eraa_dataset.net_demand,
+                       DATATYPE_NAMES.fatal_production: eraa_dataset.fatal_prod}
         # create Unit Commitment Timeseries object from data read
-        if elt_analysis.data_type == DATATYPE_NAMES.demand:
+        if elt_analysis.data_type in per_dt_data:
             # loop over country to extract per-country data from dataset.
             # N.B. year and climatic_year have been uniquely set up when init. the Dataset object
             for country in current_countries:
-                current_df[(country, year, clim_year, extra_params_idx)] = eraa_dataset.demand[country]
-        elif elt_analysis.data_type == DATATYPE_NAMES.capa_factor:
-            # idem
-            for country in current_countries:
-                current_df[(country, year, clim_year, extra_params_idx)] = eraa_dataset.agg_cf_data[country]
-        elif elt_analysis.data_type == DATATYPE_NAMES.net_demand:
-            # idem
-            for country in current_countries:
-                current_df[(country, year, clim_year, extra_params_idx)] = eraa_dataset.net_demand[country]
+                current_df[(country, year, clim_year, extra_params_idx)] = per_dt_data[elt_analysis.data_type][country]
         else:
             for country in current_countries:
                 current_df[(country, year, clim_year, extra_params_idx)] = None

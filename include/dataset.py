@@ -205,8 +205,8 @@ def get_hydro_data(hydro_dt: str, folder: str, countries: List[str], climatic_ye
             resample_method = HYDRO_DATA_RESAMPLE_METHODS[hydro_dt]
             per_country_hydro_data[country] = (
                 resample_and_distribute(df=current_country_df, date_col=date_col, value_cols=value_cols,
-                                        key_cols=key_cols, method=resample_method, start_date=start_date_resample, 
-                                        end_date=end_date_resample, resample_divisor=resample_divisor, 
+                                        key_cols=key_cols, method=resample_method, start_date=start_date_resample,
+                                        end_date=end_date_resample, resample_divisor=resample_divisor,
                                         fill_na_vals=fill_na_vals, freq='h')
             )
         else:  # no data for current country
@@ -279,21 +279,12 @@ def capa_info_log(df_gen_capa: pd.DataFrame):
     logging.info(f'-> power capacity values, in MW: {power_capa_dict}')
 
 
-def calc_net_demand(df_demand: pd.DataFrame, df_gen_capa: pd.DataFrame, df_agg_cf: pd.DataFrame,
-                    cf_agg_prod_types_tb_read: List[str], capas_aggreg_pt_with_cf: Dict[str, int],
-                    df_hydro_ror_prod: pd.DataFrame = None) \
-        -> (pd.DataFrame, List[str]):
-    """
-    Calculate net demand
-    :returns df with net demand, and list of prod types for which (RES) capacity values have been set from data
-    provided in Python arg, and not from ERAA data (in data folder of this project)
-    """
+def calc_cf_capa_prod(df_gen_capa: pd.DataFrame, df_agg_cf: pd.DataFrame, cf_agg_prod_types_tb_read: List[str],
+                      capas_aggreg_pt_with_cf: Dict[str, int]) -> (Dict[str, pd.DataFrame], List[str], List[str]):
     value_col = COLUMN_NAMES.value
     pts_with_capa_from_arg = []  # prod types with capacity value taken from arg. (not ERAA data)
     pts_wo_cf_data = []  # prod types without CF data obtained...
-    # TODO: directly in pd to avoid creation of np arrays?
-    # convert to float so that subtraction of CF can be done hereafter
-    current_np_net_demand = np.array(df_demand[value_col]).astype(np.float64)
+    cf_capa_prod = {}
     for agg_prod_type in cf_agg_prod_types_tb_read:
         # get current capa either from fixed data provided as arg of this function
         if agg_prod_type in capas_aggreg_pt_with_cf:
@@ -303,9 +294,38 @@ def calc_net_demand(df_demand: pd.DataFrame, df_gen_capa: pd.DataFrame, df_agg_c
             current_capa = df_gen_capa.loc[df_gen_capa[PROD_TYPE_AGG_COL] == agg_prod_type, 'power_capacity'].values[0]
         current_cf_data = df_agg_cf[df_agg_cf[PROD_TYPE_AGG_COL] == agg_prod_type]
         if len(current_cf_data) > 0:
-            current_np_net_demand -= current_capa * np.array(current_cf_data[value_col])
+            cf_capa_prod[agg_prod_type] = current_capa * np.array(current_cf_data[value_col])
         else:
             pts_wo_cf_data.append(agg_prod_type)
+    return cf_capa_prod, pts_with_capa_from_arg, pts_wo_cf_data
+
+
+def calc_net_demand(df_demand: pd.DataFrame, df_gen_capa: pd.DataFrame, df_agg_cf: pd.DataFrame,
+                    cf_agg_prod_types_tb_read: List[str], capas_aggreg_pt_with_cf: Dict[str, int],
+                    df_hydro_ror_prod: pd.DataFrame = None) \
+        -> (pd.DataFrame, List[str]):
+    """
+    Calculate net demand
+    :param df_demand: df with demand data
+    :param df_gen_capa: idem generation capas ones
+    :param df_agg_cf: idem, CF ones
+    :param cf_agg_prod_types_tb_read: list of pt with CF data to be used for calculation
+    :param capas_aggreg_pt_with_cf: {pt name: capa value to be used}; in order to be able to overwrite ERAA capa values
+    for some cases (e.g., data analysis)
+    :param df_hydro_ror_prod: prod from hydro ROR units
+    :returns df with net demand, and list of prod types for which (RES) capacity values have been set from data
+    provided in Python arg, and not from ERAA data (in data folder of this project)
+    """
+    value_col = COLUMN_NAMES.value
+    # TODO: directly in pd to avoid creation of np arrays?
+    # convert to float so that subtraction of CF can be done hereafter
+    current_np_net_demand = np.array(df_demand[value_col]).astype(np.float64)
+    cf_capa_prod, pts_with_capa_from_arg, pts_wo_cf_data = (
+        calc_cf_capa_prod(df_gen_capa=df_gen_capa, df_agg_cf=df_agg_cf,
+                          cf_agg_prod_types_tb_read=cf_agg_prod_types_tb_read,
+                          capas_aggreg_pt_with_cf=capas_aggreg_pt_with_cf)
+    )
+    current_np_net_demand -= sum(cf_capa_prod.values())
     if df_hydro_ror_prod is not None and len(df_hydro_ror_prod) > 0:
         current_np_net_demand -= np.array(df_hydro_ror_prod[value_col])
     df_net_demand = deepcopy(df_demand)
@@ -316,11 +336,11 @@ def calc_net_demand(df_demand: pd.DataFrame, df_gen_capa: pd.DataFrame, df_agg_c
     return df_net_demand, pts_with_capa_from_arg
 
 
-def capa_from_arg_for_net_demand_info_log(prod_types_with_capa_from_arg: List[str],
-                                          capas_aggreg_pt_with_cf: Dict[str, int]):
+def capa_from_arg_for_info_log(data_type: str, prod_types_with_capa_from_arg: List[str],
+                               capas_aggreg_pt_with_cf: Dict[str, int]):
     if len(prod_types_with_capa_from_arg) > 0:
         used_capas_from_arg = {pt: capas_aggreg_pt_with_cf[pt] for pt in prod_types_with_capa_from_arg}
-        logging.info(f'For net demand calculation, the following prod types have capa values used '
+        logging.info(f'For {data_type} calculation, the following prod types have capa values used '
                      f'from arg, in MW: {used_capas_from_arg}')
 
 
@@ -386,6 +406,9 @@ def get_data_for_gen_unit_with_e_capa(capa_data_dict: Dict[str, float]) -> Dict[
 
 
 def complete_country_data(per_country_data: Dict[str, pd.DataFrame]) -> Dict[str, pd.DataFrame]:
+    """
+    Replace None values by empty dfs
+    """
     empty_df = pd.DataFrame()
     return {country: empty_df if val is None else val for country, val in per_country_data.items()}
 
@@ -405,6 +428,7 @@ class Dataset:
     is_stress_test: bool = False
     demand: Dict[str, pd.DataFrame] = None  # {country: df of data}
     net_demand: Dict[str, pd.DataFrame] = None  # idem
+    fatal_prod: Dict[str, pd.DataFrame] = None  # idem
     agg_cf_data: Dict[str, pd.DataFrame] = None  # idem
     agg_gen_capa_data: Dict[str, pd.DataFrame] = None  # idem
     interco_capas: Dict[Tuple[str, str], float] = None  # {(origin country, dest. country): interco. capa. value}
@@ -445,6 +469,7 @@ class Dataset:
         hydro_folder = os.path.join(INPUT_ERAA_FOLDER, DT_SUBFOLDERS.hydro)
 
         self.demand = {}
+        self.fatal_prod = {}
         self.net_demand = {}
         self.agg_cf_data = {}
         self.agg_gen_capa_data = {}
@@ -458,6 +483,11 @@ class Dataset:
         if DATATYPE_NAMES.net_demand in datatypes_selec:
             dts_tb_read.extend([DATATYPE_NAMES.demand, DATATYPE_NAMES.installed_capa, DATATYPE_NAMES.capa_factor,
                                 DATATYPE_NAMES.hydro_ror])
+            dts_tb_read = list(set(dts_tb_read))
+
+        # idem for fatal prod.
+        if DATATYPE_NAMES.fatal_production in datatypes_selec:
+            dts_tb_read.extend([DATATYPE_NAMES.installed_capa, DATATYPE_NAMES.capa_factor, DATATYPE_NAMES.hydro_ror])
             dts_tb_read = list(set(dts_tb_read))
 
         # hydro. data is concatenated over all countries in hydro data -> read it once
@@ -562,6 +592,25 @@ class Dataset:
                     self.agg_gen_capa_data[country] = current_df_gen_capa
                 capa_info_log(df_gen_capa=current_df_gen_capa)
 
+            if DATATYPE_NAMES.fatal_production in datatypes_selec:
+                # TODO: include hydro ror here ?
+                cf_capa_prod, pts_with_capa_from_arg, pts_wo_cf_data = (
+                    calc_cf_capa_prod(df_gen_capa=current_df_gen_capa, df_agg_cf=agg_cf_data_read,
+                                      cf_agg_prod_types_tb_read=cf_agg_prod_types_tb_read,
+                                      capas_aggreg_pt_with_cf=capas_aggreg_pt_with_cf))
+                # from dict {pt name: np prod profile} to df "production_type_agg", "date", "value" to unify format
+                current_dates = list(agg_cf_data_read[COLUMN_NAMES.date])
+                n_dates = len(current_dates)
+                dfs_lst = []
+                for agg_pt, prod_prof in cf_capa_prod.items():
+                    dfs_lst.append(pd.DataFrame({'production_type_agg': n_dates * [agg_pt],
+                                                 COLUMN_NAMES.date: current_dates, COLUMN_NAMES.value: prod_prof}))
+                # with other data
+                self.fatal_prod[country] = pd.concat(dfs_lst)
+                capa_from_arg_for_info_log(data_type=DATATYPE_NAMES.fatal_production,
+                                           prod_types_with_capa_from_arg=pts_with_capa_from_arg,
+                                           capas_aggreg_pt_with_cf=capas_aggreg_pt_with_cf)
+
             if DATATYPE_NAMES.net_demand in datatypes_selec:
                 # ror production of current country
                 if country in self.hydro_ror_data:
@@ -574,8 +623,9 @@ class Dataset:
                                     capas_aggreg_pt_with_cf=capas_aggreg_pt_with_cf, df_hydro_ror_prod=current_ror_prod)
                 )
                 self.net_demand[country] = current_df_net_demand
-                capa_from_arg_for_net_demand_info_log(prod_types_with_capa_from_arg=pts_with_capa_from_arg,
-                                                      capas_aggreg_pt_with_cf=capas_aggreg_pt_with_cf)
+                capa_from_arg_for_info_log(data_type=DATATYPE_NAMES.net_demand,
+                                           prod_types_with_capa_from_arg=pts_with_capa_from_arg,
+                                           capas_aggreg_pt_with_cf=capas_aggreg_pt_with_cf)
 
         if DATATYPE_NAMES.interco_capa in datatypes_selec:
             interco_capas = (
@@ -588,8 +638,12 @@ class Dataset:
             self.interco_capas = interco_capas
 
     def complete_data(self):
+        """
+        Replace None values by empty dfs in all dict {country: df of data}
+        """
         # TODO: see cases leading to None data at this stage... and if to be treated before - and merge following cases
         self.demand = complete_country_data(per_country_data=self.demand)
+        self.fatal_prod = complete_country_data(per_country_data=self.fatal_prod)
         self.net_demand = complete_country_data(per_country_data=self.net_demand)
         self.agg_cf_data = complete_country_data(per_country_data=self.agg_cf_data)
         self.agg_gen_capa_data = complete_country_data(per_country_data=self.agg_gen_capa_data)
@@ -653,13 +707,13 @@ class Dataset:
                 is_storage_like = energy_capacity > 0
                 if agg_pt in units_complem_params_per_agg_pt and len(units_complem_params_per_agg_pt[agg_pt]) > 0:
                     # add pnom attribute if needed
-                    if check_if_from_eraa_data(param_key=power_capa_key, 
+                    if check_if_from_eraa_data(param_key=power_capa_key,
                                                complem_params_pt=units_complem_params_per_agg_pt[agg_pt]):
                         logging.debug(2 * N_SPACES_MSG * ' ' + f'-> add {power_capa_key}')
                         current_assets_data[agg_pt][GEN_UNITS_PYPSA_PARAMS.power_capa] = int(power_capacity)
 
                     # add pmax_pu when variable for RES/fatal units
-                    if check_if_from_eraa_data(param_key=capa_factor_key, 
+                    if check_if_from_eraa_data(param_key=capa_factor_key,
                                                complem_params_pt=units_complem_params_per_agg_pt[agg_pt]):
                         logging.debug(2 * N_SPACES_MSG * ' ' + f'-> add {capa_factor_key}')
                         current_pt_res_cf_data = (
@@ -668,7 +722,7 @@ class Dataset:
                             np.array(current_pt_res_cf_data[COLUMN_NAMES.value])
                         )
                     # add inflow when it applies
-                    if check_if_from_eraa_data(param_key=inflow_key, 
+                    if check_if_from_eraa_data(param_key=inflow_key,
                                                complem_params_pt=units_complem_params_per_agg_pt[agg_pt]):
                         logging.debug(2 * N_SPACES_MSG * ' ' + f'-> add {inflow_key}')
                         current_pt_inflow_data = self.hydro_inflows_data[country]
@@ -682,20 +736,22 @@ class Dataset:
                             current_inflows_data = 0  # Q: ok to set constant float and not vector for this PyPSA attr.?
                         current_assets_data[agg_pt][GEN_UNITS_PYPSA_PARAMS.inflow] = current_inflows_data
                     # add soc extreme levels when it applies
-                    if check_if_from_eraa_data(param_key=soc_level_extr_key, 
+                    if check_if_from_eraa_data(param_key=soc_level_extr_key,
                                                complem_params_pt=units_complem_params_per_agg_pt[agg_pt]):
                         logging.debug(2 * N_SPACES_MSG * ' ' + f'-> add {soc_level_extr_key} (min and max)')
                         current_pt_soc_level_min_data = self.hydro_reservoir_levels_min_data[country]
                         try:
                             current_soc_level_min_data = np.array(current_pt_soc_level_min_data[COLUMN_NAMES.value])
                         except:
-                            logging.warning(f'Issue to access SOC level min data for {country} and {agg_pt} -> set to 0')
+                            logging.warning(
+                                f'Issue to access SOC level min data for {country} and {agg_pt} -> set to 0')
                             current_soc_level_min_data = 0  # Q: ok to set constant float and not vector for this PyPSA attr.?
                         current_pt_soc_level_max_data = self.hydro_reservoir_levels_max_data[country]
                         try:
                             current_soc_level_max_data = np.array(current_pt_soc_level_max_data[COLUMN_NAMES.value])
                         except:
-                            logging.warning(f'Issue to access SOC level min data for {country} and {agg_pt} -> set to 0')
+                            logging.warning(
+                                f'Issue to access SOC level min data for {country} and {agg_pt} -> set to 0')
                             current_soc_level_max_data = 1e12  # Q: ok to set constant float and not a vector for this PyPSA attr.?
                         current_assets_data[agg_pt][GenUnitsCustomParams.soc_min] = current_soc_level_min_data
                         current_assets_data[agg_pt][GenUnitsCustomParams.soc_max] = current_soc_level_max_data
@@ -769,15 +825,16 @@ class Dataset:
         else:
             logging.info('PyPSA NEEDED PARAMETERS FOR GENERATION UNITS CREATION HAVE BEEN LOADED!')
 
-    def get_hydro_params_for_extr_levels_const(self) -> (Dict[str, np.ndarray], Dict[str, np.ndarray], Dict[str, float]):
+    def get_hydro_params_for_extr_levels_const(self) -> (
+    Dict[str, np.ndarray], Dict[str, np.ndarray], Dict[str, float]):
         hydro_reservoirs_data = {country: select_gen_units_data(gen_units_data=units_data,
                                                                 countries=[set_country_trigram(country=country)],
                                                                 unit_types=[ProdTypeNames.hydro_reservoir])
-                                                                for country, units_data in self.generation_units_data.items()}
+                                 for country, units_data in self.generation_units_data.items()}
         hydro_soc_min = {elt.name: elt.soc_min
-                        for c, reservoirs_data in hydro_reservoirs_data.items() for elt in reservoirs_data}
-        hydro_soc_max = {elt.name: elt.soc_max 
-                            for c, reservoirs_data in hydro_reservoirs_data.items() for elt in reservoirs_data}
+                         for c, reservoirs_data in hydro_reservoirs_data.items() for elt in reservoirs_data}
+        hydro_soc_max = {elt.name: elt.soc_max
+                         for c, reservoirs_data in hydro_reservoirs_data.items() for elt in reservoirs_data}
         # energy capacity, obtained as power capacity * max_hours duration
         hydro_e_capa = {elt.name: float(elt.max_hours * elt.p_nom)
                         for c, reservoirs_data in hydro_reservoirs_data.items() for elt in reservoirs_data}
