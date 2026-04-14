@@ -88,7 +88,8 @@ class PlotParams:
 
     def check(self, json_plot_params_file: str):
         # TODO: check TB coded
-        logging.warning('Plot params check TO BE CODED')
+        bob = 1
+        # logging.warning('Plot params check TO BE CODED')
 
     def add_colors_for_stock_with_suffix(self):
         """

@@ -45,8 +45,7 @@ D4) Redondances country.json et europe_tb_modif.json ?
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 DATA ANALYSIS (DA) - before 1st UC run, to get an intuition of the pbs - my_little_europe_data_analysis.py
-DA1) Add datatype=production in possible values (for agg. prod types for which it is known as an input parameter)
-DA2) Debug case net_demand with multiple CYs
+DA1) Add datatype=production in possible values (for agg. prod types for which production is known as an input parameter)
 DA3) (improve code quality) Avoid creating Dataset object once per data analysis - getting once all data needed (however it should be done
 on the product of data needs -> more than needed in general)
 DA4) Allow capacity plot/extract - over multiple years and dts?
@@ -142,3 +141,4 @@ O7) Subpart of git with distinguished access-rights between students / TA for do
 O8) Finish and connect type checker for JSON file values -> using map(func, [val]) and all([true])
 -> OK excepting UsageParameters
 O9) Add Excel plugin to have a nice view of csv in codespace -> rainbow csv?
+O10) Plot params check to be coded -> cf. check() with only bob=1 in plot_params.py

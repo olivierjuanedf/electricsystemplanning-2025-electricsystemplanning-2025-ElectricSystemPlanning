@@ -5,7 +5,7 @@
       "data_type": "net_demand",
       "countries": "france",
       "years": [2025, 2033],
-      "climatic_years": 1985
+      "climatic_years": [1985, 2016]
     }
   ]
 }
