@@ -263,7 +263,7 @@ class DataAnalysis:
         # for production
         if self.data_type == DatatypesNames.fatal_production:
             # check that some aggreg. pt are provided
-            if self.aggreg_prod_types is None:
+            if self.aggreg_prod_types == [None]:
                 errors_list.append(f'For {self.analysis_type} with {DatatypesNames.fatal_production} some aggreg. '
                                    f'prod. types must be specified')
             else:  # and that they correspond to pt with CF data
