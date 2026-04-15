@@ -599,7 +599,12 @@ class Dataset:
                                       cf_agg_prod_types_tb_read=cf_agg_prod_types_tb_read,
                                       capas_aggreg_pt_with_cf=capas_aggreg_pt_with_cf))
                 # from dict {pt name: np prod profile} to df "production_type_agg", "date", "value" to unify format
-                current_dates = list(agg_cf_data_read[COLUMN_NAMES.date])
+                # get dates from CF data - on which data selection has been applied
+                first_agg_pt = list(cf_capa_prod)[0]
+                # selecting only the dates for a given agg. pt (other each date will be repeated...
+                # nber of agg. pt times)
+                current_dates = (
+                    list(agg_cf_data_read.loc[agg_cf_data_read['production_type_agg'] == first_agg_pt, COLUMN_NAMES.date]))
                 n_dates = len(current_dates)
                 dfs_lst = []
                 for agg_pt, prod_prof in cf_capa_prod.items():
