@@ -9,6 +9,7 @@ To get some insights on the data used in this code environment, from **European 
   - **analysis_type** (<span style="color:#257cbd; font-weight:bold">str</span>):  - "plot" - to get some curves plotted e.g., demand of a given (country, year, climatic year)    
         <span style="margin-left: 123px;"> - "plot_duration_curve" - idem for duration curve of a given quantity, typically (net) demand  
         <span style="margin-left: 123px;"> - "extract" to get some ERAA data extracted to a .csv file
+    
   - **data_type** (<span style="color:#257cbd; font-weight:bold">str</span>): datatype to analyze/plot; its value must be in the list of available values given in file [input/long_term_uc/functional_available-values.json](../../input/long_term_uc/functional_available-values.json) (e.g., "demand", "net_demand", "res_capa-factors", "fatal_production", "generation_capas", etc.). 
   
   - **country** (<span style="color:#257cbd; font-weight:bold">str</span> or <span style="color:#257cbd; font-weight:bold">list of str</span>): it must be in the list of values given in file [input/long_term_uc/elec-europe_eraa-available-values.json](../../input/long_term_uc/elec-europe_eraa-available-values.json) (field "countries").  
@@ -17,9 +18,8 @@ To get some insights on the data used in this code environment, from **European 
     N.B. If list of countries: if plots are displayed, multiple curves will be obtained (one for each country - on the same graph); if csv is written, data of the different countries will be concatenated.
   
   - **year** (<span style="color:#257cbd; font-weight:bold">int</span> or <span style="color:#257cbd; font-weight:bold">list of int</span>): year(s) to be considered for the data analysis; its value must be in the list of values given in file [input/long_term_uc/elec-europe_eraa-available-values.json](../../input/long_term_uc/elec-europe_eraa-available-values.json) (field “target_years”).  
-      <span style="color:#257cbd; font-weight:bold">N.B.</span> If list of years: if plots are displayed, multiple curves will be obtained (one for each year - on the same graph); if csv is written, data of the different years will be concatenated.
 
-    N.B. If list of years: if plots are displayed, multiple curves will be obtained (one for each year - on the same graph); if csv is written, data of the different years will be concatenated.
+      <span style="color:#257cbd; font-weight:bold"> N.B.</span> If list of years: if plots are displayed, multiple curves will be obtained (one for each year - on the same graph); if csv is written, data of the different years will be concatenated.
   
   - **climatic_year** (<span style="color:#257cbd; font-weight:bold">int</span> or <span style="color:#257cbd; font-weight:bold">list of int</span>): the (past) year from which weather conditions will be "extracted" and applied to current year; it must be in list given in file [input/long_term_uc/elec-europe_eraa-available-values.json](../../input/long_term_uc/elec-europe_eraa-available-values.json) (field "climatic_years")  
     N.B. If list of climatic years: if plots are displayed, multiple curves will be obtained (one for each climatic year - on the same graph); if csv is written, data of the different climatic years will be concatenated.
