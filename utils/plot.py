@@ -256,6 +256,8 @@ def set_curve_style_attrs(plot_dims_tuples: List[Tuple[str, int, int]], plot_dim
                     set_specific_keys_to_get_style_attr(key=case_tuple[level], attr_level=level,
                                                         zone_level=zone_level, extra_args_level=extra_args_level,
                                                         per_case_attrs_vals=corresp_dict))
+                if corresp_dict is None:
+                    raise Exception(f"No dict. to set style attrs for attr. name {attr_name}")
                 style_attrs_dict[attr_name] = corresp_dict[key_for_attr]
         per_case_curve_style_attrs[case_tuple] = CurveStyleAttrs(**style_attrs_dict)
     return per_case_curve_style_attrs
