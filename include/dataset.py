@@ -456,7 +456,9 @@ class Dataset:
         # default is to read all data, excepting net demand (only used for data-analysis)
         if datatypes_selec is None:
             datatypes_selec = list(DATATYPE_NAMES.__dict__.values())
+            # remove datatypes that are used only for data-analysis, and not to be used by default
             datatypes_selec.remove(DATATYPE_NAMES.net_demand)
+            datatypes_selec.remove(DATATYPE_NAMES.fatal_production)
         # and not to apply capa. values fixed in arg
         if capas_aggreg_pt_with_cf is None:
             capas_aggreg_pt_with_cf = {}
