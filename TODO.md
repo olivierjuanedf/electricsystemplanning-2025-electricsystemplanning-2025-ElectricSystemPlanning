@@ -45,7 +45,6 @@ D4) Redondances country.json et europe_tb_modif.json ?
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 DATA ANALYSIS (DA) - before 1st UC run, to get an intuition of the pbs - my_little_europe_data_analysis.py
-DA1) Add datatype=production in possible values (for agg. prod types for which production is known as an input parameter)
 DA3) (improve code quality) Avoid creating Dataset object once per data analysis - getting once all data needed (however it should be done
 on the product of data needs -> more than needed in general)
 DA4) Allow capacity plot/extract - over multiple years and dts?
@@ -53,7 +52,16 @@ DA6) Replace [-2] by an adaptive index to refer to extra-params idx at some stag
 DA7) Allow case (extract, load duration curve) - currently only possible to plot it
 DA8) Integrate hydro\RoR data in net_demand calc case -> already ok? (maybe not big impact...)
 DA9) Improve names of CF/fatal prod figures when only 1 agg pt selected (xx_agg-pt-name_yyy_1-agg-pt -> last part of suffix useless)
-DA10) (Bogue) Cas avec solar_pv/wind_offshore et 2 années clim... Pb to get a product on 2 dims ? (CY and agg pt)
+DA10) (Bug) Case with solar_pv/wind_offshore and 2 clim years... Pb to get a product on 2 dims ? (CY and agg pt)
+DA11) Add possibility to have multiple datatypes on same fig, e.g. demand and net_demand
+DA12) Initialize environment with very simple examples to be working directly for students
+DA13) Allow to specify an "aggregation operation" in JSON file -> e.g. to sum multiple cases (fatal prod of diff. pt);
+this could be done by adding aggreg_operation: {'cases': [(2025, 1986, "solar_pv"), (2025, 1986, "wind_offshore")...],
+'operation': 'sum'}
+N.B. If unique value for some fields (year, cy) possibly they must be only optional -> 'cases': ('solar_pv'), 
+('wind_offshore') in previous ex.
+DA14) (Bug?) period_start/end not accounted for in case of extract, fatal_production ? (observation of an 
+EUREC's student... in 2026/4)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 TOY EX (T) - my_toy_ex_italy.py. Some tasks shared with Eur (E) case following
