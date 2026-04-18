@@ -65,6 +65,8 @@ EUREC's student... in 2026/4)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 TOY EX (T) - my_toy_ex_italy.py. Some tasks shared with Eur (E) case following
+T0) Suppress this script from the env. to simplify - proposing to the students motivated to discover PyPSA some
+TP outside of the env.? (before the class, or if they have some extra-time during the course)
 T1) Fullfill long_term_uc/toy_model_params/italy_parameters.py with complem exs in Ita case (hydro, batteries, dsr)
 T2) Do NOT mention diff of PV key between capa and CF data -> confusing for the students...
 T3) Keep FUEL_SOURCES or too complex for the students?
@@ -92,13 +94,16 @@ E4) Reformat/simplify JSON params file (in input/long_term_uc/elec-europe_params
 E5) Get dual variable associated to link capa constraint
 -> not directly provided in PyPSA... needs to get it from Linopy
 -> cf. include\dataset_builder.py, get_link_capa_dual_var_opt function init
-E6) Connecter qques nouveaux params au JSON Eur 
--> SOC_init pour les (gros) stocks?
+E6) Add a few new params in JSON Eur 
+-> init_SOC for (big) stocks?
 -> Use "from_json_tb_modif" keyword in input\long_term_uc elec-europe_params_fixed.json
 (currently only "from_eraa_data" used)
--> ctes dynamiques aussi
+-> params for dynamic constraints also
 E7) Add link congestion calculation -> % of link capa usage
--> stat metrif of this in UCSummary
+-> stat metric of this in UCSummary
+E8) Add parameter in this file to automatically use a 1-country UC model (cf. T0 above)
+-> to avoid having to fill/force all the intercos capa values to 0 manually in Eur JSON file
+-> some adaptation to be done in the output data/figs for this specific case?
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 RUNNER (R) (main_runner.py)
@@ -138,7 +143,17 @@ P10) Plot (histogram?) of distribution of link congestion level per link and sea
 P11) Congestion level duration curve with 1 figure per country and 1 curve per link with neighb. countries
 
 OTHERS
-O1) Doc basic use of codespace out of the repot?
+O1) Doc basic use of codespace out of the repot? YES
+-> FOR STUDENTS see the version of EUREC course (2026/4) which was pretty complete. Add nonetheless: 
+(i) Installation
+of rainbow csv plugin to have a better "experience" with csv data in codespace (type "rainbow" after having clicked 
+on the left on "installation"??; install)
+(ii) Add confirmation to be done after having an e-mail just after accepting to participate to the github classroom
+(cf. examples obtained by EUREC's students in 2026/4)
+-> FOR TEACHERS
+* basic manipulation in git (in codespace environment) to be able to support students in case...
+  (in particular "git remote" -> get list of remote repots?? "git pull upstream/{branch name}" to get last modifs
+of upstream repot)
 O2) Version Python dispos sous le codespace 3.9-3.12 -> mettre dans la doc/cmd pour l'obtenir 
 O3) / by efficiency in FuelSources and not * for primary cost?
 O4) Iberian-peninsula -> Iberia ?
